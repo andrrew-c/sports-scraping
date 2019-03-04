@@ -1,5 +1,5 @@
 ## sports-scraping
-In game betting and scarping related to sports
+In game betting and scraping related to sports
 
 ## Author: Andrew Craik
 

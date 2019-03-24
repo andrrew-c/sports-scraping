@@ -117,8 +117,85 @@ def getgameslist_sel(browser
 
     return [json.loads(script) for script in scripts]
 
-    
+
 def get_static_events(browser
+                     , soup
+                     , event_exclusions_list
+                     , write_html = False
+                     , write_scripts = False
+                     , suffix=None):
+
+    """
+
+        Run through browser page, and return dictionary with information
+        2017-04-08- updated.
+        the previous code didn't work too well.
+        
+    """
+    
+    
+    from bs4 import BeautifulSoup as bs
+    import sys
+    import json
+    
+    ## Script string - used to get the script we're interested in
+    script_string = "document.aip_list.create_prebuilt_event("      ## used to identify scripts of interest
+    script_string_end = ");"
+
+    ## If no soup provided, get it from browser
+    if soup == None:
+        ################################
+        ## Get page source
+        ################################
+        
+        ps = browser.page_source
+
+        ## Making soup
+        print("Making soup.....")
+        soup = bs(ps, 'html.parser')
+
+        ################################################
+        ## Entire HTML - If user wants to write out html
+        ################################################
+        
+        if write_html:
+            #out_html = input("Type name of file to write HTML out to.\nwhill.txt is standard")
+            #out_html = 'html_out' + str(suffix) + '.txt'
+            ## Write out text file of HTML
+            file = open(out_html, 'wb')
+            file.write(ps.encode('utf-8'))
+            file.close()
+            print("HTML data written to file: ", out_html)
+
+    ################################################
+    ## Create function which returns list of games for tournament in script tag
+    ################################################
+        
+    #### Find all script objects in response - where script_string is in script
+    # scripts = [s for s in soup.find_all('script', {'type':'text/javascript', 'language':'Javascript'}) if script_string in s.text]
+    #scripts = [s.text[s.text.find(script_string)+len(script_string):s.text.find(script_string_end)] for s in soup.find_all('script', {'type':'text/javascript', 'language':'Javascript'}) if script_string in s.text]
+    event_scripts = [s.text for s in soup.find_all('script', {'type':'text/javascript', 'language':'Javascript'}) if script_string in s.text]
+    
+    ## Each event script may have one or more events - these should be extracted separately
+    
+    event_scripts_separated = [s.split(script_string) for s in event_scripts]
+    
+    ## Now remove any missing or blank space
+    event_list = [ event_scripts_separated[i][j] for i in range(len(event_scripts_separated)) for j in range(len(event_scripts_separated[i])) if event_scripts_separated[i][j].strip() != '']
+    
+    ## With each event, remove the extra text around the start and end
+    ## I.e. ready to load into JSON 
+    event_list_json = [e[:e.find(script_string_end)-len(script_string_end)] for e in event_list]
+    
+    print("Number of scripts to turn into JSON data = ", len(event_list_json))
+    dict_list = [json.loads(event) for event in event_list_json]
+    
+    ## Return dictionary with event ID as key
+    return {dict_list[i]['event']:dict_list[i] for i in range(len(dict_list))}
+    ## create dictionary with event IDs as the key
+    
+    
+def get_static_events_201903(browser
                      , soup
                      , event_exclusions_list
                      , write_html = False

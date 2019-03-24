@@ -47,6 +47,10 @@ import functions_whill_sel as mf
 url_main = "http://sports.williamhill.com/bet/en-gb"
 url_main = "http://sports.williamhill.com/bet/en-gb/betlive/9"
 
+## William hill changed their website around 2019-03-20
+## The URL above takes you to the one here:
+url_new = "https://sports.williamhill.com/betting/en-gb/in-play/all"
+
 ## HTML text file
 out_html = 'whill.txt'
 
@@ -67,8 +71,10 @@ browser = mf.initbrowser(url_main, False)
 
 ## Check that browser has not went to another URL (because no games are loaded)
 url_loaded = browser.current_url
-if url_main != url_loaded:
+if url_loaded not in [url_main, url_new]:
+    pdb.set_trace()
     print("*"*30, "\nWARNING: Browser is no longer on the intended URL (", url_main, ").\nThis will need checked.... Program terminated")
+    print("URL being sent to is: {}".format(url_loaded))
     
     ## Stop program
     sys.exit()
@@ -85,7 +91,7 @@ print("Game registry has length '{}'".format(len(Game._registry)))
 
 ## Init
 starttime = datetime.utcnow()
-
+pdb.set_trace()
 try:
     for i in range(iters):
 

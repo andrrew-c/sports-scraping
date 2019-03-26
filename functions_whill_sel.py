@@ -133,7 +133,7 @@ def get_static_events(browser
         
     """
     
-    
+    pdb.set_trace()
     from bs4 import BeautifulSoup as bs
     import sys
     import json
@@ -153,6 +153,11 @@ def get_static_events(browser
         ## Making soup
         print("Making soup.....")
         soup = bs(ps, 'html.parser')
+        
+        """  OK - Andrew added 2019-03-26
+        You get soup 
+        sps = soup.find_all('div', {'class':'event'})
+        with sps - find all class-btmarket__selection"""
 
         ################################################
         ## Entire HTML - If user wants to write out html
@@ -252,6 +257,8 @@ def get_static_events_201903(browser
     # scripts = [s for s in soup.find_all('script', {'type':'text/javascript', 'language':'Javascript'}) if script_string in s.text]
     #scripts = [s.text[s.text.find(script_string)+len(script_string):s.text.find(script_string_end)] for s in soup.find_all('script', {'type':'text/javascript', 'language':'Javascript'}) if script_string in s.text]
     event_scripts = [s.text for s in soup.find_all('script', {'type':'text/javascript', 'language':'Javascript'}) if script_string in s.text]
+    
+    ### 
     
     ## Each event script may have one or more events - these should be extracted separately
     

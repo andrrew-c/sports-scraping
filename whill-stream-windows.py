@@ -91,7 +91,7 @@ print("Game registry has length '{}'".format(len(Game._registry)))
 
 ## Init
 starttime = datetime.utcnow()
-pdb.set_trace()
+
 try:
     for i in range(iters):
 

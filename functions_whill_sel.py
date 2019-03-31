@@ -118,6 +118,8 @@ def getgameslist_sel(browser
     return [json.loads(script) for script in scripts]
 
 
+
+
 def get_static_events(browser
                      , soup
                      , event_exclusions_list

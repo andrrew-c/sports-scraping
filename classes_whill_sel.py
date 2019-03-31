@@ -15,6 +15,7 @@ class Game:
     
     def __init__(self, static_event_info, live_event_info):
 
+        
         """
             The Game class object
         """

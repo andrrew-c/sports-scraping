@@ -13,7 +13,7 @@ import os, sys
 
 
 ## Change path
-#os.chdir(os.path.abspath(__file__))
+#os.chdir(os.path.dirname(sys.argv[0]))
 
 import pickle
 ## Debugging
@@ -63,7 +63,8 @@ out_html = 'whill.txt'
 games = []
 
 ## Change path
-mainpath = os.path.abspath(os.path.dirname(__file__))
+#mainpath = os.path.abspath(os.path.dirname(__file__))
+mainpath = os.path.abspath(os.path.dirname(sys.argv[0]))
 os.chdir(mainpath)
 print("Working directory changed to '{}'".format(mainpath))
 
@@ -93,22 +94,81 @@ event_exclusions_list = {'MultiMatchMarkets':18351}
 # %% Update source
 ps = browser.page_source
 
-# Write out source
-with open('blah.txt', 'wb') as f: f.write(ps.encode('utf-8'))
 
-# %% 
+
+
+# Write out source
+#with open('blah.txt', 'wb') as f: f.write(ps.encode('utf-8'))
+
+## %%   Get the soup and try to get the events
 ## Get some soup and try and find the games!!
 soup = bs(browser.page_source, 'html.parser')
-g1 = soup.find_all('div', {'class':'btmarket__selection'})
-g2 = soup.find_all('div', {'class':"btmarket__boundary"})
-g3 =soup.find_all('div', {'class':"btmarket"})
-g3a = g3[1]
 
-g4 = soup.find_all('a', {'class':"btmarket__name btmarket__name--featured"})
-g5 = soup.find_all('div', {'class':"btmarket__content__icons-side"}) 
+# %% 
+live_info = mf.get_live_info(soup)
+pdb.set_trace()
+
+# %%  SOME CODE GOES HERE
+
+g1 = soup.find_all('div', {'class':'btmarket__selection'})
+
+
+## Get all events (hopefully)
+g2 = soup.find_all('div', {'class':'event'})
+
+
+
+eventID = g2[0]['data-entityid']
+startTime = g2[0]['data-startdatetime']
+currentTime = g2[0].find('label', {'class':'wh-label btmarket__live go area-livescore event__status'}).text
+
+## Get the games
+games = g2[0].find_all('div', {'class':"btmarket__selection"})
+with open('blah2.txt', 'wt') as f: f.write(str(games[0]))
+
+
+"""
+# %% Get Scores
+scores = g2[0].find_all('label', {'class':'wh-label btmarket__livescore'})[0].find_all('span')
+
+scoresA = scores[0].text
+scoresB = scores[1].text
+
+
+
+# %% With a game -get score odds etc.
+
+
+g1 = games[0].find_next()
+
+## Team name
+g1_teamname = g1['data-name']
+
+## Team ID
+g1_id = g1['data-entityid']
+
+## Odds
+g1_num = g1['data-num']
+g1_den = g1['data-denom']
+
+# %%
+
+""" 
+
+"""
+## From each game
+## 
+s = "wh-label btmarket__live go area-livescore event__status"
+#g2_0 = {'data-entityid':g2[0]['data-entityid'], 'starttime':}
+#g2 = soup.find_all('div', {'class':"btmarket__boundary"})
+#g3 =soup.find_all('div', {'class':"btmarket"})
+#g3a = g3[1]
+
+#g4 = soup.find_all('a', {'class':"btmarket__name btmarket__name--featured"})
+#g5 = soup.find_all('div', {'class':"btmarket__content__icons-side"}) 
                          
 #g3 = soup.find_all('div', {'class':"btmarket__content-margins"})
-
+"""
 
 """
 

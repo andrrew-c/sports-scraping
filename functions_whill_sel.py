@@ -300,8 +300,303 @@ def gettags(browser, tag, myclass, myclassstring):
         return soup.find_all(tag)
     
 
-def get_live_info(soup):
 
+
+def get_live_info(soup):
+    
+    ## THIS IS INTENDED TO BE THE NEW ONE
+
+    ####################################################################################
+    #######  UPDATE 2018-04-26 - COULDN'T GET THIS WORKING!!! RRRRGGH
+    ####################################################################################
+
+    """
+    This module takes soup (from BeautifulSoup (bs4)) and returns a dictionary with information on the game, team and odds.
+    The dictionary is in format:
+        {game_id:
+            {'score_home', 'score_away', 'time'
+            , team_id_X:
+            {'num', 'den'}
+    """
+
+    ## Import any modules required
+    import re                       ## Regular expressions
+    import dict_recur as dr         ## this module is on python path
+    
+    ## Missing score strings (goal - when goal happens)
+    miss_score_list = ['goal!', 'update', '']
+    
+    
+    
+    ## Key for attribute holding date of game
+    sDateKey = 'data-startdatetime'
+    
+    
+    ## Get all events
+    
+    ## Get all events (hopefully)
+    events = soup.find_all('div', {'class':'event'})
+    
+    ## Check that the home team is always first in the list
+    homes = []
+    ## Init dictionary to hold all games
+    gamedict = {}
+    
+    ## For each event in event list
+    for e in events:
+        
+        ## Init event dictionary ({teamid:{num:-, den:-}})
+        
+        #########################################################
+        ## Some basic checks of event (is this really a game?)
+        #########################################################
+        
+        ## Get basic event information
+        
+        ## Event ID
+        eventID = e['data-entityid']
+        
+        
+        
+        ## Start time
+        if e.has_attr(sDateKey):
+            startTime = e['data-startdatetime']
+        else:
+            print("Do not have start time key '{}' for event ID {}".format(sDateKey, eventID))
+            startTime= ''
+        
+        ## Current time
+        currentTime = e.find('label', {'class':'wh-label btmarket__live go area-livescore event__status'}).text
+        
+        ## Get the teams
+        teams = e.find_all('div', {'class':"btmarket__selection"})
+        teams = [t.next_element for t in teams]
+                
+        ## Get team ID, name and odds
+        iHomeCheck = 0 
+        
+        for t in teams:
+            iHomeCheck = iHomeCheck + 1
+            
+            #pdb.set_trace()   
+            teamID = t['id']
+            teamName = t['data-name']
+
+            ## If first of teams, make note of team name (to check if all first are home)
+            if iHomeCheck == 1:
+                homes.append(teamName)
+            
+            teamNum = t['data-num']
+            teamDen = t['data-denom']
+            teamOdds = t['data-odds']
+            
+        
+            ## Update game dictionary
+            dr.update(gamedict, {eventID:{teamID:{'name':teamName, 'num':teamNum, 'den':teamDen, 'odds':teamOdds}}})
+    print(len(homes))
+    pdb.set_trace()   
+         
+        #with open('blah2.txt', 'wt') as f: f.write(str(games[0]))
+        
+""" %% Get Scores
+#        scores = e.find_all('label', {'class':'wh-label btmarket__livescore'})[0].find_all('span')
+#        scoresA = scores[0].text
+#        scoresB = scores[1].text
+#    
+#        t1 = teams[0].next_element['data-name']
+#        t2 = teams[1].next_element['data-name']
+#        t3 = teams[2].next_element['data-name']
+        pdb.set_trace()
+
+"""
+
+def _old():
+    
+    #print("Some teams are being missed out from live information - so some keys are missing")
+    #print("***************************\nCheck get_live_info")
+    ###########################################################################
+    ## Create a list of all 'live events' in the web page using the soup
+    ## Each event has two or more teams
+    ## Each team has a score and an odds of winning
+    ###########################################################################
+
+    
+    ##############################################################################
+    ## Get odds information from soup
+    ## (each team, including 'draw' should have odds
+    ##############################################################################
+    
+    ## Get odds informcation for each event
+    odds_info = soup.find_all('div', {'class':'eventprice'})
+
+    
+    ################################################
+    ## Team information and odds
+    ## From the odds information we isolate team IDs
+    ## There will be a 1-1 relationship
+    ################################################
+
+
+    ## Each individual team (within an event) has an ID
+    ## Get the team IDs from the odds information
+    team_ids = [ re.sub(r'\D', '', team['id']) for team in odds_info]
+
+                
+    ##############################
+    ## Odds ##
+    ##############################
+        
+    ## Odds of winning - get each teams' odds of winning from the event level information
+    odds_string = [ t.contents[0].strip() for t in odds_info ]
+    
+    odds_num, odds_den = [], []
+    ## If odds are evens - set to 1/1
+    for string in odds_string:
+        if string.casefold() == 'evs':
+            odds_num.append(1)
+            odds_den.append(1)
+            
+        ## Else, get numerator and denominator
+        else:
+            odds_num.append( string[:string.find('/')] )
+            odds_den.append( string[string.find('/')+1:] )
+
+    ## Init dictionary
+    team_dict = {}
+    ## Then loop through each teams with numerator/denominator
+    for i in range(len(team_ids)):
+        ## Update dictionary 
+        team_dict.update({team_ids[i]:{'num':odds_num[i], 'den':odds_den[i]}})
+    
+    ###################################################
+    ## Game information
+    ###################################################
+
+    #############################################################
+    ## Each of the team will belong to a game M-1 relationship
+    ## Each game will have a time (1-1) and a score (1-1)
+    #############################################################
+
+    ## tgidt = Team, game ID, time
+    tgidt = {}
+    
+    ## Initialise time and score for this 'game'
+    game_dict = {}
+    
+    odds_num, odds_den = [], []
+    
+    ## Odds of winning - get each teams' odds of winning from the event level information
+    odds_string = [ t.text.strip() for t in odds_info ]
+
+    ## Init o, in case the loop doesn't go anywhere....
+    o = 0
+    
+    ## Loop over each set of odds information
+    for o in range(len(odds_info)):
+
+        ## Init variables
+        time, secs, mins = -9, -9, -9
+            
+        #################################################
+        ## Time
+        ## Time information is needed for next parts
+        #################################################
+                
+        ## Init gameid
+        gameid = None
+        
+        ## For each parent tag in for 'odds_information'
+        for game_info in odds_info[o].findAllPrevious('a', {'class':'Score'}):
+
+            ## Get game ID
+            gameid = re.sub(r'\D', '', game_info['id'])
+
+            ## If no gameid found, break out
+            if gameid in [None, '']:
+                break
+            dr.update(game_dict, {gameid:{team_ids[o]:team_dict[team_ids[o]]}})
+            #pdb.set_trace()
+            
+            if 'start' in game_info['id']:
+                
+                time = game_info.text.strip()
+                    
+                if time.casefold() == 'live':
+                    time = -9
+                else:
+                    mins = time[:time.find(':')]
+                    secs = time[time.find(':')+1:]
+            
+                ## Time in seconds
+                try:              
+                    time2 = ( int(mins) * 60 + int(secs) )
+                except:
+                    print("Issue with time.... mins='{}' and secs='{}'".format(mins, secs))
+                    next
+            
+                break
+
+        ## If there's no gameid, stop this loop
+        if gameid in [None, '']:
+            print("gameid = '{}'.  Loop will be broken.".format(gameid))
+            break
+        
+        ## Update dictionary
+        dr.update(game_dict, {gameid:{'time':time2}})
+        
+        
+        ######################################################################
+        ## Score
+        ## Score information comes in a string like '1-2'
+        ## The first score is the home team and the second away
+        ## If time is missing (-9) then the scores should also be missing
+        ######################################################################
+
+        scorehome, scoreaway = -9, -9
+        
+        ## For each parent tag in for 'odds_information'
+        for game_info in odds_info[o].findAllPrevious('a', {'class':'Score'}):
+
+            ## If tag has score information
+            if 'score' in game_info['id']:
+
+                ## Isolate the string
+                score = game_info.text.strip()
+                
+                ## If time refers to a 'live' event and not a game, set to -9
+                if game_dict[gameid]['time'] == -9:
+                    scorehome, scoreaway = -9, -9
+                    break
+                
+                ## Else, if scores are in the string (i.e. not 'live' or 'update')
+                elif score.casefold() not in miss_score_list:
+                    #print("game scores string = ", game_scores)
+                    scorehome = int(score[:score.find('-')]) 
+                    scoreaway = int(score[score.find('-')+1:])
+                    break
+                
+                ## Else, set to missing
+                else:
+                    #print("*************************** Module: get live info.\nCheck this module for the 'else' case for scores....")
+                    scorehome, scoreaway = -9, -9
+                    break
+
+        dr.update(game_dict, {gameid:{'score_home':scorehome, 'score_away':scoreaway}})
+                
+            
+    print("Processed {} 'odds information' tags.".format(o+1))   
+        
+    #pdb.set_trace()        
+    return game_dict
+    
+
+def get_live_info_20190331(soup):
+
+    ####################################################################################
+    ## This was archived on 2019-03-31
+    ####################################################################################
+    
+    
     ####################################################################################
     #######  UPDATE 2018-04-26 - COULDN'T GET THIS WORKING!!! RRRRGGH
     ####################################################################################

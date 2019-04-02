@@ -300,11 +300,120 @@ def gettags(browser, tag, myclass, myclassstring):
         return soup.find_all(tag)
     
 
-
-
 def get_live_info(soup):
+
+    """
+    This module takes soup (from BeautifulSoup (bs4)) and returns a dictionary with information on the game, team and odds.
+    The dictionary is in format:
+        {game_id:
+            {'score_home', 'score_away', 'time'
+            , team_id_X:
+            {'num', 'den'}
+    """
+
+    ## Import any modules required
+    import re                       ## Regular expressions
+    import dict_recur as dr         ## this module is on python path
     
-    ## THIS IS INTENDED TO BE THE NEW ONE
+    ## Missing score strings (goal - when goal happens)
+    miss_score_list = ['goal!', 'update', '']
+
+    ## keys to keep
+    keysToKeep = ['id', 'data-name', 'data-odds', 'data-num', 'data-denom']
+
+    ## Home-flag re-mapping
+    homeFlagMap = {1:'H', 2:'D', 3:'A'}
+    
+    
+    
+    ## Get list of events
+    events = soup.find_all('div', {'class':'event'})
+
+    ## Key for attribute holding date of game
+    sDateKey = 'data-startdatetime'
+
+    
+    ## Check that the home team is always first in the list
+    homes = []
+    ## Init dictionary to hold all games
+    gamedict = {}
+
+    
+    eCounter = 0
+    for event in events:
+
+        
+
+        ## Iterate counter
+        eCounter = eCounter + 1
+
+        ## Event ID
+        eventID = event['id'] 
+        
+        ## Start time
+        if event.has_attr(sDateKey):
+            startTime = event['data-startdatetime']
+        else:
+            print("No startdate iteration {}, ID = {}".format(eCounter, eventID))
+            startTime = None
+        
+        ## Current time
+        #pdb.set_trace()
+        timeTag = event.find('div', {'class':'btmarket__boundary'})
+        if timeTag != None:
+            currentTime = timeTag.text
+        else:
+            print("Iteration {} of {}, no time".format(eCounter, len(events)))
+            pdb.set_trace()
+            currentTime = None
+            
+        ## Update game dictionary with this game
+        dr.update(gamedict, {eventID:{'startTime':startTime, 'currentTime':currentTime}})
+        
+        ## For each event, get information on teams
+        
+
+
+        teamInfo = {}
+        ## Get the teams
+        teams = event.find_all('div', {'class':"btmarket__selection"})
+        teams = [t.next_element for t in teams]
+
+        teamCounter = 0 
+        for team in teams:
+            teamCounter = teamCounter + 1
+
+            ## Team information as dictionary
+            tDict1 = dict(team.attrs)
+
+
+        
+            teamHome = homeFlagMap[teamCounter]
+            ## Only keep keys I want
+            tDict = {key: tDict1[key] for key in keysToKeep}
+
+            ## Add on flag for 'home', 'away' or 'draw'
+            #tDict.update({'home-flag':homeFlagMap[teamCounter]})
+
+            #pdb.set_trace()
+            ## Update (recursively) the event dictionary
+            dr.update(gamedict, {eventID:{teamHome:tDict}})
+
+        ## Scores
+        scores = event.find_all('label', {'class':'btmarket__livescore'})
+        
+        pdb.set_trace()
+
+    print("End of looping over {} games".format(len(events)))
+    return gamedict
+
+        
+
+    
+
+def get_live_info_20190402(soup):
+    
+    ## THIS IS INTENDED TO BE THE NEW ONE (2019-04)
 
     ####################################################################################
     #######  UPDATE 2018-04-26 - COULDN'T GET THIS WORKING!!! RRRRGGH
@@ -341,58 +450,84 @@ def get_live_info(soup):
     homes = []
     ## Init dictionary to hold all games
     gamedict = {}
-    
+
+    i = 0 
     ## For each event in event list
     for e in events:
-        
-        ## Init event dictionary ({teamid:{num:-, den:-}})
-        
-        #########################################################
-        ## Some basic checks of event (is this really a game?)
-        #########################################################
-        
-        ## Get basic event information
-        
-        ## Event ID
-        eventID = e['data-entityid']
-        
-        
-        
-        ## Start time
-        if e.has_attr(sDateKey):
-            startTime = e['data-startdatetime']
-        else:
-            print("Do not have start time key '{}' for event ID {}".format(sDateKey, eventID))
-            startTime= ''
-        
-        ## Current time
-        currentTime = e.find('label', {'class':'wh-label btmarket__live go area-livescore event__status'}).text
-        
-        ## Get the teams
-        teams = e.find_all('div', {'class':"btmarket__selection"})
-        teams = [t.next_element for t in teams]
-                
-        ## Get team ID, name and odds
-        iHomeCheck = 0 
-        
-        for t in teams:
-            iHomeCheck = iHomeCheck + 1
-            
-            #pdb.set_trace()   
-            teamID = t['id']
-            teamName = t['data-name']
 
-            ## If first of teams, make note of team name (to check if all first are home)
-            if iHomeCheck == 1:
-                homes.append(teamName)
-            
-            teamNum = t['data-num']
-            teamDen = t['data-denom']
-            teamOdds = t['data-odds']
-            
+        i = i + 1 
         
-            ## Update game dictionary
-            dr.update(gamedict, {eventID:{teamID:{'name':teamName, 'num':teamNum, 'den':teamDen, 'odds':teamOdds}}})
+        try:
+                
+            ## Init event dictionary ({teamid:{num:-, den:-}})
+            
+            #########################################################
+            ## Some basic checks of event (is this really a game?)
+            #########################################################
+            
+            ## Get basic event information
+            
+            ## Event ID
+            eventID = e['data-entityid']
+            
+            
+            
+            ## Start time
+            if e.has_attr(sDateKey):
+                startTime = e['data-startdatetime']
+            else:
+                print("Do not have start time key '{}' for event ID {}".format(sDateKey, eventID))
+                startTime= ''
+            
+            ## Current time
+            #pdb.set_trace()
+            timeTag = e.find('label', {'class':'wh-label btmarket__live go area-livescore event__status'})
+            if timeTag != None:
+                currentTime = timeTag.text
+            else:
+                print("Iteration {} of {}, no time".format(i, len(events)))
+                currentTime = None
+                
+            
+            
+            ## Get the teams
+            teams = e.find_all('div', {'class':"btmarket__selection"})
+            teams = [t.next_element for t in teams]
+                    
+            ## Get team ID, name and odds
+            iHomeCheck = 0 
+
+            tidx = 0
+            for t in teams:
+                tidx = tidx + 1
+                iHomeCheck = iHomeCheck + 1
+                
+                #pdb.set_trace()   
+                if t.has_attr('id'):
+                    teamID = t['id']
+                else:
+                    print("Iteration team '{}' for game {} has no 'id'".format(tidx, i))
+
+                if t.has_attr('data-name'):
+                    teamName = t['data-name']
+                else:
+                    print("Iteration team '{}' for game {} has no 'data-name'".format(tidx, i))
+
+                ## If first of teams, make note of team name (to check if all first are home)
+                if iHomeCheck == 1:
+                    homes.append(teamName)
+                
+                teamNum = t['data-num']
+                teamDen = t['data-denom']
+                teamOdds = t['data-odds']
+                
+            
+                ## Update game dictionary
+                dr.update(gamedict, {eventID:{teamID:{'name':teamName, 'num':teamNum, 'den':teamDen, 'odds':teamOdds}}})
+        except AttributeError as ae:
+            print("Error on event {}, teams = {}".format(i, teams))
+            pdb.set_trace()
+            raise(ae)
     print(len(homes))
     pdb.set_trace()   
          

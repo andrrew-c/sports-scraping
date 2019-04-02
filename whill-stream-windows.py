@@ -51,6 +51,7 @@ import functions_whill_sel as mf
 ## William Hill URL
 url_main = "http://sports.williamhill.com/bet/en-gb"
 url_main = "http://sports.williamhill.com/bet/en-gb/betlive/9"
+url_main = "https://sports.williamhill.com/betting/en-gb/in-play/football"
 
 ## William hill changed their website around 2019-03-20
 ## The URL above takes you to the one here:
@@ -102,11 +103,29 @@ ps = browser.page_source
 
 ## %%   Get the soup and try to get the events
 ## Get some soup and try and find the games!!
-soup = bs(browser.page_source, 'html.parser')
+
+
+#a1 = soup.find_all('div', {'class':'event'})
+#a2 = [a for 
 
 # %% 
-live_info = mf.get_live_info(soup)
-pdb.set_trace()
+#live_info = mf.get_live_info(soup)
+
+
+lists = []
+for i in range(3):
+    soup = bs(browser.page_source, 'html.parser')
+    lists.append(mf.get_live_info(soup))
+    pdb.set_trace()
+def CheckAttributeExists(obj, attr):
+    """ Returns True if attribute exists"""
+    pass
+
+
+
+      
+
+
 
 # %%  SOME CODE GOES HERE
 

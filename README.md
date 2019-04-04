@@ -1,6 +1,6 @@
 #
 sports-scraping
-In game betting and scraping related to sports
+In game betting and scraping related to sports.  This progam records the scores and odds for football matches in real-time using a live browser, based on William Hill betting site.
 
 ## Author: Andrew Craik
 

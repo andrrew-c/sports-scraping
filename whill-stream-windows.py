@@ -51,10 +51,12 @@ import functions_whill_sel as mf
 ## William Hill URL
 url_main = "http://sports.williamhill.com/bet/en-gb"
 url_main = "http://sports.williamhill.com/bet/en-gb/betlive/9"
+
+## Added this one on 2019-04-02
 url_main = "https://sports.williamhill.com/betting/en-gb/in-play/football"
 
 ## William hill changed their website around 2019-03-20
-## The URL above takes you to the one here:
+## The URL above takes you to the one here - this is only used as a check if the first one changes:
 url_new = "https://sports.williamhill.com/betting/en-gb/in-play/all"
 
 ## HTML text file
@@ -77,7 +79,7 @@ print("Working directory changed to '{}'".format(mainpath))
 ###########################
 
 ## Get browser to webpage
-browser = mf.initbrowser(url_main, False)
+browser = mf.initbrowser(url_main, hidebrowser=True)
 
 ## Check that browser has not went to another URL (because no games are loaded)
 url_loaded = browser.current_url
@@ -113,10 +115,14 @@ ps = browser.page_source
 
 
 lists = []
-for i in range(3):
-    soup = bs(browser.page_source, 'html.parser')
-    lists.append(mf.get_live_info(soup))
-    pdb.set_trace()
+#for i in range(3):
+    #soup = bs(browser.page_source, 'html.parser')
+    #lists.append(mf.get_live_info(soup))
+#    pdb.set_trace()
+
+mf.GamesEngine(browser)
+
+    
 def CheckAttributeExists(obj, attr):
     """ Returns True if attribute exists"""
     pass

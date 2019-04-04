@@ -1,6 +1,7 @@
 import pdb
 import json
 
+
 class Game:
 
     """
@@ -13,7 +14,7 @@ class Game:
     _changelist    = ['odds', 'score']
     _blacklist = []     ### Blacklisted IDs
     
-    def __init__(self, static_event_info, live_event_info):
+    def __init__(self, live_event_info):
 
         
         """
@@ -197,6 +198,7 @@ class Game:
                 teamdict.update({'Away':t.name})
         
         return teamdict
+
 
 
 ####################################################
@@ -721,3 +723,204 @@ class WHillBrowser:
         
         ## return dictionary with ID (market_id) and odds
         return market_dict
+
+
+
+
+class Game_Archive_20190404:
+
+    """
+    A William Hill Game Class
+    When initialised it has a start date, sport name, event (ID number)
+    
+    """
+
+    _registry = {}
+    _changelist    = ['odds', 'score']
+    _blacklist = []     ### Blacklisted IDs
+    
+    def __init__(self, static_event_info, live_event_info):
+
+        
+        """
+            The Game class object
+        """
+          
+    
+        from datetime import date
+
+        
+        
+        if static_event_info['selections'][0]['fb_result'] != '-':
+            ## Check there is a team to update
+                
+            ## Set up startdate for events - to stop different events with the same ID being overwritten
+            self.startdate = date.today()
+        
+            ## Sport name - string
+            self.sport_name         = static_event_info['sport']['sport_name']
+            
+            ## Event ID - string - used as game level unique ID - need ot check that's OK to do
+            self.event              = static_event_info['event']      ## ID for event
+            
+            ## Add new game to game registry for this class
+            self._registry.update({self.event:self})
+            
+            self.tournament_id      = static_event_info['type']['type_id']
+            self.tournament         = static_event_info['type']['type_name']
+            self.start_time         = static_event_info['start_time']
+            self.secs_to_start      = static_event_info['secs_to_start_time']
+            self.selections         = static_event_info['selections']
+            
+            ## Each game has three teams (home/away/draw)
+            self.teams              = self.initteams(static_event_info, live_event_info)
+        else:
+            self._blacklist.append(static_event_info['event'])
+   
+    def initteams(self, static_event_info, live_event_info):
+
+        """ 
+        
+        Initialise team class for event
+        Input static_event_info: static 'event' level information
+            
+        """
+        #print("Teams should be a dictionary with market_id as the ID - this would avoid the need for any FOR loops when matching teams")
+        return [Team(self, static_event_info, static_event_info['selections'][i]) for i in range(len(static_event_info['selections']))]
+
+    def archive_init_events(self, events):
+            """
+            Using list comprehension this initialises all events into games
+            """
+            ## Initialises all events into 'game' objects
+            #[print(type(events[i])) for i in events]
+            [Game(events[i]) for i in events] 
+            
+    
+
+    def checkexists(self, event_to_check):
+            """
+            Looks through list of events and checks whether already exists
+            Returns True if already exists
+            """
+            output = False
+            ## Loop through all in registry
+            for game in self._registry:
+                    ## If event id in list, stop, return True
+                    if event_to_check == game.event:
+                            return True
+
+
+    def update_teams(self, live_event_info):
+    
+        """
+        This function is called to update the odds and scores for each team in a game
+        """
+        #pdb.set_trace()
+        ## Get current time (in seconds)
+        time = live_event_info['time']
+        #print(live_event_info)
+        #print("Time = ", time)
+        
+        ## Iterate through each team in game
+        for team in self.teams:
+        
+                #print("market id type", type(team.market_id))
+               # [print( type(k), k) for k in live_event_info.keys()]
+                
+                # Update odds, if changed (or not yet initialised)
+                # print(live_event_info.keys())
+                # print(team.market_id, type(team.market_id))
+                
+                ## Only try an update if teams information in live info
+                if team.market_id in live_event_info:
+
+                    ## Update odds
+                    team.update_odds(live_event_info[team.market_id], time)
+
+                    # Update score, if changed (or not yet initialised)
+                    team.update_score(time = time, live_info = live_event_info)
+                            
+   
+    def update_game(self, new_game):
+    
+        """ Update DB:
+               This function updates the class instance with new informatsion on odds and scores
+        """
+        
+        import dict_recur as dr
+        
+        ## List of attributes
+        attr_list = ['odds', 'score']
+        
+        ## For each team in DB
+        try:
+            for current_team in self.teams:
+                     
+                ## Match with new team to be updated
+                for new_team in new_game.teams:
+                    
+                    ## When IDs match
+                    if current_team.market_id == new_team.market_id:
+                                             
+                        ## Update each attribute (dictionary) 
+                        for attr in attr_list:
+                        
+                            ## Update attribute
+                            setattr(current_team, attr, current_team.update_team_attribute(new_team, attr))
+                            print("Updated team attribute: ", attr, " for team ", current_team.name, " to ", getattr(current_team, attr))
+        except:
+            print("There's an issue with record:", self.event, "this will need checked.")
+            
+            
+           
+            
+        
+    def hasstarted(self):
+        """ Not sure if this function is used.  
+        """
+        ## If time to start is positive, game has not started
+        if self.secs_to_start >= 0:
+                return False
+        else:
+                return True
+
+        
+        
+    def archive_checkchange_odds(self, dict_in):
+        print("To check change in odds here\nDictionary event id = ", self.event, " and dict_in ID = ", dict_in['event'])
+
+        ## get info to check
+        for team in self.teams:
+                if team.name != 'Draw':
+                        print("Checkign odds for team with name", team.name)
+                        team.updateodds(dict_in)
+    
+    def archive_checkchange_score(self, dict_in):
+        pass
+
+   
+    def getgameindex(self, event_id_to_check):
+
+        ## Init i to minus 1 (to start at zero)
+        i = -1
+        
+        for game in self._registry:
+                ## Iterate index
+                i += 1
+                if event_id_to_check == game.event:
+                        return i
+        return None
+
+      
+    def getteams(self):
+        """ Returns the name of the teams with whether they are home/away"""
+        teamdict = {}
+        for t in self.teams:
+            if t.home=='H':
+                teamdict.update({'Home':t.name})
+            elif t.home=='A':
+                teamdict.update({'Away':t.name})
+        
+        return teamdict
+

@@ -7,7 +7,10 @@ def initbrowser(url, hidebrowser=False):
         Initialises browser to scrape web data
         returns object browser (driver) - selenium object.
 
-        Only needs to be run once per session.
+        Only needs to be run once per session.#
+
+        url: url to load up
+        hidebrowser: Minimise browser if True
     """
 
     ## Import os, system
@@ -62,6 +65,91 @@ def initbrowser(url, hidebrowser=False):
     browser.get(url)
     return browser
 
+
+def GamesEngine(browser, iters=None):
+
+    ## Import datetime
+    from datetime import datetime
+    from bs4 import BeautifulSoup as bs
+
+    ## Class definition - game object
+    from classes_whill_sel import Game        ## mc = my classes
+    
+    """ Added: 2019-04-04 """
+    
+    if iters == None:
+        iters = 1000000
+    
+    try:
+
+        for i in range(iters):
+
+            ##
+            starttime = datetime.utcnow()
+
+            ## Output some information to user
+            print("\n{0}\nIter: {1} of {2} ({3:.2%})\n{0}".format("*"*40, i, iters, i/iters))
+
+            ## Refresh browser every n iterations
+            if i > 0 and i%iRefreshIters == 0:
+                print("\nRefreshing browser! :-)\n\n")
+                browser.refresh()
+                print("Updating DB with {} games".format(len(Game._registry)))
+                mf.updatedb(Game._registry, 'whilldb')
+            
+            ## Make some soup from browser HTML
+            soup = bs(browser.page_source, 'html.parser')
+     
+            ################################################################
+            ## Load up dynamic information - loaded live from browser
+            ################################################################
+                
+            ## Get soup from browser
+            print("Getting live information from:", browser.current_url)
+            live_info = get_live_info(soup)
+            print("Number of live events to load up - ", len(live_info))
+            print("Live information loaded, took {} seconds.".format(datetime.utcnow()-starttime))
+
+            ## For each live event in browser soup
+            for game in live_info:
+
+                ## If game not in registry - add game
+                if game not in Game._registry:
+
+                    ## Tell user new game to be added
+                    print("Game not in regitry.  Need to check blacklist")
+
+                    ## Check game ID is not in black list                    
+                    if game not in Game._blacklist:
+                        print("Game not in blacklist either - will add game, with ID:", game)
+                        ## Then, if i > 0 (i.e. don't refresh on first run for each
+                        if i > 0:
+                            browser.refresh()
+                            print("Refresh browser first....")
+
+
+                    pdb.set_trace()
+                    Game(live_info[game]) 
+                    
+                    #print("Game IN registry - to be updated", game)
+                    Game._registry[game].update_teams(live_info[game])
+
+
+            if iters > 1:
+                print("Sleeping....")
+                #endtime = datetime.utcnow()
+                time.sleep(3)
+            check = input("Do you want to save the DB?\nY/N... ")
+            if check.casefold() == 'y':
+                mf.updatedb(Game._registry, 'whilldb')
+            else:
+                pass
+    except KeyboardInterrupt as e:
+        check = input("Do you want to save the DB?\nY/N... ")
+        if check.casefold() == 'y':
+            mf.updatedb(Game._registry, 'whilldb')
+        else:
+            pass
 
 def getgameslist_sel(browser
                      , event_exclusions_list
@@ -306,10 +394,14 @@ def get_live_info(soup):
     This module takes soup (from BeautifulSoup (bs4)) and returns a dictionary with information on the game, team and odds.
     The dictionary is in format:
         {game_id:
-            {'score_home', 'score_away', 'time'
+            {'tournament_id', 'tournament', 'score_home', 'score_away', 'time'
             , team_id_X:
             {'num', 'den'}
     """
+
+    print("Need to update this to get the tournament ID for each game")
+    print("Need to update this to get the tournament ID for each game")
+    
 
     ## Import any modules required
     import re                       ## Regular expressions
@@ -341,9 +433,8 @@ def get_live_info(soup):
     
     eCounter = 0
     for event in events:
-
         
-
+        pdb.set_trace()
         ## Iterate counter
         eCounter = eCounter + 1
 
@@ -364,15 +455,33 @@ def get_live_info(soup):
             currentTime = timeTag.text
         else:
             print("Iteration {} of {}, no time".format(eCounter, len(events)))
-            pdb.set_trace()
-            currentTime = None
+            #pdb.set_trace()
+            currentTime = -9
             
         ## Update game dictionary with this game
         dr.update(gamedict, {eventID:{'startTime':startTime, 'currentTime':currentTime}})
+
+        ##########################
+        ## Scores
+        ##########################
+
+        
+        ## BS tag for scores
+        scoresTag = event.find_all('label', {'class':'btmarket__livescore'})[0]
+
+        scoresDict = {}
+
+        ## Score - home
+        scoresDict.update({'H':scoresTag.find_next().text})
+
+        ## Score - away
+        scoresDict.update({'A':scoresTag.find_next().find_next().text})
+
+        ##############################
+        ## Teams
+        ##############################
         
         ## For each event, get information on teams
-        
-
 
         teamInfo = {}
         ## Get the teams
@@ -387,22 +496,22 @@ def get_live_info(soup):
             tDict1 = dict(team.attrs)
 
 
-        
-            teamHome = homeFlagMap[teamCounter]
+            ## String holding A or H
+            homeFlag = homeFlagMap[teamCounter]
+            
             ## Only keep keys I want
             tDict = {key: tDict1[key] for key in keysToKeep}
 
-            ## Add on flag for 'home', 'away' or 'draw'
-            #tDict.update({'home-flag':homeFlagMap[teamCounter]})
+            ## Add on score for 'home' or 'away'             
+            if homeFlag != 'D':
+                tDict.update({'score':scoresDict[homeFlag]})
 
             #pdb.set_trace()
             ## Update (recursively) the event dictionary
-            dr.update(gamedict, {eventID:{teamHome:tDict}})
+            dr.update(gamedict, {eventID:{homeFlag:tDict}})
 
-        ## Scores
-        scores = event.find_all('label', {'class':'btmarket__livescore'})
         
-        pdb.set_trace()
+        #pdb.set_trace()
 
     print("End of looping over {} games".format(len(events)))
     return gamedict
@@ -1535,9 +1644,55 @@ def games_have_same_start_date(dbgame, newgame):
         Return true if games match start date
     """
     return dbgame.startdate == newgame.startdate
-    
+
+
 def updatedb(games, dbout):
 
+    """
+        Purpose:     
+        Date:        2019-04-04
+        Author:      Andrew Craik
+        Inputs:    
+           
+            games - current registry
+            dbout - string contraining name of db to update
+
+     
+    
+    """
+    
+    
+    import shelve
+    from datetime import date
+    
+    db = shelve.open(dbout)
+    
+    #pdb.set_trace()
+    ## Print message to user
+    print("*"*40, "\nUpdating DB", "*"*40)
+    
+    ## For each game in memory
+    for game in games:
+    
+        ## If game ID is already in DB
+        if game in db.keys():
+        
+            if games_have_same_start_date(db[game], games[game]):
+                print("Game matches start date - can be updated")
+                db[game].update_game(games[game])
+            else:
+                new_id = games[game].event + games[game].startdate.strftime('%Y_%m_%d')
+                print("Games have same ID but different start date - new game will be given new ID: ", new_id)
+                db[new_id] = games[game]
+                
+        ## Else, game can be saved as is...   
+        else:
+            db[str(game)] = games[game]
+        
+    db.close()
+    
+def updatedb_archived(games, dbout):
+    """ Archived on 2019-04-04 """ 
     """
     games - current registry
     dbout - string contraining name of db to update

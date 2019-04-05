@@ -120,6 +120,15 @@ lists = []
     #lists.append(mf.get_live_info(soup))
 #    pdb.set_trace()
 
+soup = bs(browser.page_source, 'html.parser')
+tns = soup.find_all('div', {'class':'markets-group-container'})
+games = {i:tns[i].find_all('div', {'class':'event'}) for i in range(len(tns))}
+numgames = [len(games[i]) for i in games.keys()]
+
+
+#pdb.set_trace()
+
+
 mf.GamesEngine(browser)
 
     

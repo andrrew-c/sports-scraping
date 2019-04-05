@@ -416,104 +416,150 @@ def get_live_info(soup):
     ## Home-flag re-mapping
     homeFlagMap = {1:'H', 2:'D', 3:'A'}
     
-    
-    
-    ## Get list of events
-    events = soup.find_all('div', {'class':'event'})
 
+    ## Initialise dictionary holding all tournaments on page
+    tournamentEvents = {}
+    
+    ## Get all 'tournaments' in the page
+    tournaments = soup.find_all('div', {'class':'markets-group-container'})
+
+    ## Get tournament names
+    tNames = [t.find('h2').text for t in tournaments]
+
+    tIDs = []
+    tidx = 0
+    for t in [t.next_element for t in tournaments]:
+        
+        tidx = tidx + 1
+        if t.has_attr('data-entityid'):
+            tIDs.append(t['data-entityid'])
+        else:
+            print("Tournament {}, {} has no ID".format(tidx, tNames[tidx]))
+    
+    #start = datetime.datetime.now()
+    #print("Processing {} tournaments to get the games".format(len(tIDs)))
+    
+    ## For each tournament -get the games in side
+    ## Creates dictionary in format: {tournament: [game_info1, game_info2, ..., game_infoN]}
+
+    #tournamentEvents.update({tid:{'name':tn} for tid in tIDs for tn in tNames })
+    #pdb.set_trace()
+    #pdb.set_trace()
+    #tournamentEvents = {tid:{tn:t.find_all('div', {'class':'event'})}
+
+    ## Create dictionary in format {tid:{name=/string/, games=/bs4resultset/}}
+    tournamentEvents = {tid:{'name':tn, 'games':t.find_all('div', {'class':'event'})} for tid in tIDs for tn in tNames for t in tournaments}
+    #pdb.set_trace()
+
+    #print("Finshed processing took {}".format((datetime.datetime.now()-start)))
+    
     ## Key for attribute holding date of game
     sDateKey = 'data-startdatetime'
 
-    
     ## Check that the home team is always first in the list
     homes = []
+    
     ## Init dictionary to hold all games
     gamedict = {}
 
+    tCounter = 0
+
+    #pdb.set_trace()
+    ## Loop through each tournament
+    for tournament in tournamentEvents.keys():
+
+        ## Keep note of tournaments being processed
+        tCounter = tCounter + 1
+
+        ## For each tournament, keep a note of the number of events
+
+        eCounter = 0
+
+        ## For each event in each tournament
+        for event in tournamentEvents[tournament]['games']:
     
-    eCounter = 0
-    for event in events:
-        
-        pdb.set_trace()
-        ## Iterate counter
-        eCounter = eCounter + 1
-
-        ## Event ID
-        eventID = event['id'] 
-        
-        ## Start time
-        if event.has_attr(sDateKey):
-            startTime = event['data-startdatetime']
-        else:
-            print("No startdate iteration {}, ID = {}".format(eCounter, eventID))
-            startTime = None
-        
-        ## Current time
-        #pdb.set_trace()
-        timeTag = event.find('div', {'class':'btmarket__boundary'})
-        if timeTag != None:
-            currentTime = timeTag.text
-        else:
-            print("Iteration {} of {}, no time".format(eCounter, len(events)))
-            #pdb.set_trace()
-            currentTime = -9
             
-        ## Update game dictionary with this game
-        dr.update(gamedict, {eventID:{'startTime':startTime, 'currentTime':currentTime}})
+            ## Iterate counter
+            eCounter = eCounter + 1
 
-        ##########################
-        ## Scores
-        ##########################
-
-        
-        ## BS tag for scores
-        scoresTag = event.find_all('label', {'class':'btmarket__livescore'})[0]
-
-        scoresDict = {}
-
-        ## Score - home
-        scoresDict.update({'H':scoresTag.find_next().text})
-
-        ## Score - away
-        scoresDict.update({'A':scoresTag.find_next().find_next().text})
-
-        ##############################
-        ## Teams
-        ##############################
-        
-        ## For each event, get information on teams
-
-        teamInfo = {}
-        ## Get the teams
-        teams = event.find_all('div', {'class':"btmarket__selection"})
-        teams = [t.next_element for t in teams]
-
-        teamCounter = 0 
-        for team in teams:
-            teamCounter = teamCounter + 1
-
-            ## Team information as dictionary
-            tDict1 = dict(team.attrs)
-
-
-            ## String holding A or H
-            homeFlag = homeFlagMap[teamCounter]
+            ## Event ID
+            eventID = event['id'] 
             
-            ## Only keep keys I want
-            tDict = {key: tDict1[key] for key in keysToKeep}
-
-            ## Add on score for 'home' or 'away'             
-            if homeFlag != 'D':
-                tDict.update({'score':scoresDict[homeFlag]})
-
+            ## Start time
+            if event.has_attr(sDateKey):
+                startTime = event['data-startdatetime']
+            else:
+                print("No startdate iteration {}, ID = {}".format(eCounter, eventID))
+                startTime = None
+            
+            ## Current time
             #pdb.set_trace()
-            ## Update (recursively) the event dictionary
-            dr.update(gamedict, {eventID:{homeFlag:tDict}})
+            timeTag = event.find('div', {'class':'btmarket__boundary'})
+            if timeTag != None:
+                currentTime = timeTag.text
+            else:
+                print("Iteration {} of {}, no time".format(eCounter, len(tournamentEvents[tournament])))
+                #pdb.set_trace()
+                currentTime = -9
+                
+            ## Update game dictionary with this game
+            dr.update(gamedict, {eventID:{'startTime':startTime, 'currentTime':currentTime}})
 
-        
-        #pdb.set_trace()
+            ##########################
+            ## Scores
+            ##########################
 
-    print("End of looping over {} games".format(len(events)))
+            
+            ## BS tag for scores
+            scoresTag = event.find_all('label', {'class':'btmarket__livescore'})[0]
+
+            scoresDict = {}
+
+            ## Score - home
+            scoresDict.update({'H':scoresTag.find_next().text})
+
+            ## Score - away
+            scoresDict.update({'A':scoresTag.find_next().find_next().text})
+
+            ##############################
+            ## Teams
+            ##############################
+            
+            ## For each event, get information on teams
+
+            teamInfo = {}
+            ## Get the teams
+            teams = event.find_all('div', {'class':"btmarket__selection"})
+            teams = [t.next_element for t in teams]
+
+            teamCounter = 0 
+            for team in teams:
+                teamCounter = teamCounter + 1
+
+                ## Team information as dictionary
+                tDict1 = dict(team.attrs)
+
+
+                ## String holding A or H
+                homeFlag = homeFlagMap[teamCounter]
+                
+                ## Only keep keys I want
+                tDict = {key: tDict1[key] for key in keysToKeep}
+
+                ## Add on score for 'home' or 'away'             
+                if homeFlag != 'D':
+                    tDict.update({'score':scoresDict[homeFlag]})
+
+                #pdb.set_trace()
+                ## Update (recursively) the event dictionary
+                #pdb.set_trace()
+                dr.update(gamedict, {eventID:{'tournamentID':tournament, 'tournament':tournamentEvents[tournament]['name'], homeFlag:tDict}})
+            #pdb.set_trace()
+
+            
+            #pdb.set_trace()
+
+    print("End of looping over {} games".format(len(tournamentEvents)))
     return gamedict
 
         

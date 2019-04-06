@@ -14,7 +14,7 @@ class Game:
     _changelist    = ['odds', 'score']
     _blacklist = []     ### Blacklisted IDs
     
-    def __init__(self, live_event_info):
+    def __init__(self, gameid, live_event_info):
 
         
         """
@@ -24,35 +24,41 @@ class Game:
     
         from datetime import date
 
+        pdb.set_trace()
+
+        ## If current time is live skip this event
+        if live_event_info['currentTime'] == 'Live':
+            return None
+            
         
+    #if static_event_info['selections'][0]['fb_result'] != '-':
+        ## Check there is a team to update
+            
+        ## Set up startdate for events - to stop different events with the same ID being overwritten
+        self.startdate = live_event_info['startTime'][:10]
+    
+        ## Sport name - string
+        #self.sport_name         = static_event_info['sport']['sport_name']
+        self.sport_name = 'Football'
         
-        if static_event_info['selections'][0]['fb_result'] != '-':
-            ## Check there is a team to update
-                
-            ## Set up startdate for events - to stop different events with the same ID being overwritten
-            self.startdate = date.today()
+        ## Event ID - string - used as game level unique ID - need ot check that's OK to do
+        self.event              = gameid    #static_event_info['event']      ## ID for event
         
-            ## Sport name - string
-            self.sport_name         = static_event_info['sport']['sport_name']
-            
-            ## Event ID - string - used as game level unique ID - need ot check that's OK to do
-            self.event              = static_event_info['event']      ## ID for event
-            
-            ## Add new game to game registry for this class
-            self._registry.update({self.event:self})
-            
-            self.tournament_id      = static_event_info['type']['type_id']
-            self.tournament         = static_event_info['type']['type_name']
-            self.start_time         = static_event_info['start_time']
-            self.secs_to_start      = static_event_info['secs_to_start_time']
-            self.selections         = static_event_info['selections']
-            
-            ## Each game has three teams (home/away/draw)
-            self.teams              = self.initteams(static_event_info, live_event_info)
-        else:
-            self._blacklist.append(static_event_info['event'])
+        ## Add new game to game registry for this class
+        self._registry.update({self.event:self})
+        
+        self.tournament_id      = live_event_info['tournamentID']   #static_event_info['type']['type_id']
+        self.tournament         = live_event_info['tournament']     #static_event_info['type']['type_name']
+        self.start_time         = live_event_info['startTime']      #static_event_info['start_time']
+        #self.secs_to_start      = static_event_info['secs_to_start_time']
+        #self.selections         = static_event_info['selections']
+        
+        ## Each game has three teams (home/away/draw)
+        self.teams              = self.initteams(gameid, live_event_info)
+    #else:
+     #   self._blacklist.append(static_event_info['event'])
    
-    def initteams(self, static_event_info, live_event_info):
+    def initteams(self, gameid, live_event_info):
 
         """ 
         
@@ -61,7 +67,7 @@ class Game:
             
         """
         #print("Teams should be a dictionary with market_id as the ID - this would avoid the need for any FOR loops when matching teams")
-        return [Team(self, static_event_info, static_event_info['selections'][i]) for i in range(len(static_event_info['selections']))]
+        return [Team(self, gameid, live_event_info['currentTime'], key, live_event_info[key]) for key in ['H', 'D', 'A']]
 
     def archive_init_events(self, events):
             """
@@ -241,79 +247,52 @@ class Team:
         ## String to pull out score differs for home / away teams
         _score_lookup = {'H':'score_home', 'A':'score_away', 'D':''}
 
-        def __init__(self, parent, d_in_event, d_in_team):
-                
-                self.parent = parent
-                self.name = d_in_team['name']
-                self.home = d_in_team['fb_result']
-                
-                ## Score type - string for score type (e.g. 'comp1_score')
-                
-                self.scoretype = Team._score_lookup[self.home]             ## String to hold score type
-                
-                ## market ID is required to get odds from page source
-                team_selection = self.getselection(d_in_event)
-                self.market_id = team_selection['ev_oc_id']
-                
-                ## Initialise odds and score dictionary for this team
-                self.odds = {}
-                self.score = {}
-  
-                
-        def archive_init_odds(self, d_in_event):
-        
-            """
-            Initialise the odds dictionary for a team, given an event dictionary (d_in_event)
-            """
-            
-            ## Get the correct selection from this event, for this team
-            sel = self.getselection(d_in_event)
-            #print(sel.keys())
-            
-            ## Get separate components for num/den            
-            num = sel['lp_num']
-            den = sel['lp_den']
-            
-            ## Calculate pseudo-probability from this
-            prob = round(int(den) / (int(num) + int(den)), 3)
-            time = self.gettime(d_in_event)
-            return {time: {'num':num, 'den':den, 'prob':prob}}      
-            
-        def archive_init_score(self, d_in_event):
-            #print(d_in_event)
-            
-            #sel_dict = getselection(d_in_event)
-            time = self.gettime(d_in_event)
-            
-            ## Init score for missing data
-            score = -9
-            #print(self.home)
-            #input("wait")
-            if self.home != 'D':
-                score = d_in_event['com_score'][self._score_lookup[self.home]]
+        def __init__(self, parent, gameid, currentTime, homeflag, d_in_team):
 
-            return {time:score}
+            """
+                Inputs:
+                    parent: parent (game) object
+                    gameid: ID for game
+                    currentTime:  Current time in "01:23" format
+                    homeflag:     'A' for away and 'H' for home, etc.
+                    d_in_team:    Dictionary holding game information
+                This program will update the attributes as follows:
+                self.parent - set a reference to the parent (game) object
+                self.name     - team name
+                self.home     - string holding information on whether home, away or draw
+                self.scoretype    - This uses the team dictionary (_score_lookup) to map the home, away, etc. to 'score_home' or 'score_away'.  Not sure where this is used (2019-04-06)
+                self.market_id    - ID for team (this was developed to only look at the team 'winning' as a market.
+                self.odds, self.score - Dictionary holding score and odds in format {'time':score} or {'time:num=, den=, prob=}
+                    Time should be in seconds
+                    
+            """
+            #pdb.set_trace()
+            self.parent = parent
+            self.name = d_in_team['data-name']
+            self.home = homeflag # d_in_team['fb_result']
             
+            ## Score type - string for score type (e.g. 'comp1_score')
             
-        def getselection(self, d_in_event):
-            """
-            Returns a sub-dictionary with the selection for the team
-            """
-            """ Returns the dictionary for this team's selection """
-            for sel in d_in_event['selections']:
-           
-                if self.home == sel['fb_result']:
-                    return sel
-                
+            self.scoretype = Team._score_lookup[self.home]             ## String to hold score type
+            
+            ## market ID is required to get odds from page source
+            #team_selection = self.getselection(d_in_event)
+            self.market_id = d_in_team['id'] #team_selection['ev_oc_id']
+            
+            ## Initialise odds and score dictionary for this team
+            self.odds = {}
+            self.score = {}
 
-        def gettime(self, d_in_event):
-            """
-            Returns integer of time
-            self - team object
-            d_in_event - dictionary 
-            """
-            return -int(d_in_event['secs_to_start_time'])
-
+            if currentTime[:2] == 'Li':
+                print("CHECK OUT CURRENT TIME")
+                pdb.set_trace()
+            timesecs = int(currentTime[:2])*60 + int(currentTime[3:5])
+            pdb.set_trace()
+            self.update_score(timesecs, d_in_team)
+            self.update_odds(timesecs, d_in_team)
+            pdb.set_trace() 
+            
+     
         def update_score(self, time, live_info):
 
             """
@@ -321,14 +300,14 @@ class Team:
                 First checks for 'home'/'away' teams (rather than draw)
                 
             """
-            
+    
             ## Get current score
             current_score = self.get_score()
 
             ## Only process 'home' and 'away teams'
             if self.home in ['H', 'A']:
                 ## Get score for this team from live information
-                new_score = live_info[self._score_lookup[self.home]]
+                new_score = live_info['score']
                           
             ## If the team is not 'draw' and the new score is different
                 if current_score != new_score:
@@ -340,7 +319,7 @@ class Team:
                     self.score.update(new_score_dict)
                     #print("*"*32, "\nGame ID = ", self.parent.event, " with ID - ", self.market_id, " - updated score for", self.name, "in tournament", self.parent.tournament)
                 
-        def update_odds(self, odds_dict, time):
+        def update_odds(self, time, live_info):
             """
             Update odds (self.odds) for each team
             """
@@ -349,8 +328,8 @@ class Team:
             if time != -9:
 
                 ## From live data - Get odds for correct selection (matching on team name)
-                num = odds_dict['num']
-                den = odds_dict['den']
+                num = live_info['data-num']
+                den = live_info['data-den']
                 
                 ## Calculate pseudo probability based on odds
                 prob = round(float(den) / (float(num) + float(den)), 3)
@@ -391,6 +370,26 @@ class Team:
                 pass
                 #print("*"*30, "Update odds - not processing team ID:", self.market_id)
                 
+            
+        def getselection(self, d_in_event):
+            """
+            Returns a sub-dictionary with the selection for the team
+            """
+            """ Returns the dictionary for this team's selection """
+            for sel in d_in_event['selections']:
+           
+                if self.home == sel['fb_result']:
+                    return sel
+                
+
+        def gettime(self, d_in_event):
+            """
+            Returns integer of time
+            self - team object
+            d_in_event - dictionary 
+            """
+            return -int(d_in_event['secs_to_start_time'])
+
         def update_team_attribute(self, new_game, attr):
             """
                 For a given team, update the attribute specified in the string attr

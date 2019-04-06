@@ -1,5 +1,15 @@
 import pdb
-import datetime
+from datetime import datetime
+
+import time     ## Time delays
+
+
+
+##################################
+## Some settings
+##################################
+
+iRefreshIters = 15
 
 def initbrowser(url, hidebrowser=False):
 
@@ -20,7 +30,7 @@ def initbrowser(url, hidebrowser=False):
      
     #############################################
     ## Import selenium
-    #############################################
+    #############################################import time
     
     from selenium import webdriver
     from selenium.webdriver.common.keys import Keys
@@ -84,6 +94,8 @@ def GamesEngine(browser, iters=None):
 
         for i in range(iters):
 
+            print("Iter {}".format(i))
+
             ##
             starttime = datetime.utcnow()
 
@@ -110,8 +122,16 @@ def GamesEngine(browser, iters=None):
             print("Number of live events to load up - ", len(live_info))
             print("Live information loaded, took {} seconds.".format(datetime.utcnow()-starttime))
 
+            ## Init refresh browser to false - sometimes we need to force it
+            #refreshBrowser = False
+            
             ## For each live event in browser soup
             for game in live_info:
+
+                ## if game not ready to load up
+                if live_info[game]['currentTime'] == 'Live':
+                    print("Skipping due to live.....")
+                    continue
 
                 ## If game not in registry - add game
                 if game not in Game._registry:
@@ -128,28 +148,234 @@ def GamesEngine(browser, iters=None):
                             print("Refresh browser first....")
 
 
-                    pdb.set_trace()
-                    Game(live_info[game]) 
+                        Game(game, live_info[game])
+                ## Else game can be updated
+                else:
+                    Game._registry[game].update_teams(live_info[game]) 
+##                    pdb.set_trace()
                     
-                    #print("Game IN registry - to be updated", game)
-                    Game._registry[game].update_teams(live_info[game])
+##                    if live_info[game]['currentTime'] != 'Live':
+##                        
+                    
+                        #print("Game IN registry - to be updated", game)
+                        #
+                    #else:
+                    #    refreshBrowser = True
+                #if refreshBrowser:
+                    #print("Forcing browser refresh")
+                    #browser.refresh()
+                    
 
 
             if iters > 1:
                 print("Sleeping....")
                 #endtime = datetime.utcnow()
                 time.sleep(3)
-            check = input("Do you want to save the DB?\nY/N... ")
-            if check.casefold() == 'y':
-                mf.updatedb(Game._registry, 'whilldb')
-            else:
-                pass
+        check = input("Do you want to save the DB?\nY/N... ")
+        if check.casefold() == 'y':
+            mf.updatedb(Game._registry, 'whilldb')
+        else:
+            pass
     except KeyboardInterrupt as e:
         check = input("Do you want to save the DB?\nY/N... ")
         if check.casefold() == 'y':
             mf.updatedb(Game._registry, 'whilldb')
         else:
             pass
+
+
+
+def get_live_info(soup):
+
+    """
+    This module takes soup (from BeautifulSoup (bs4)) and returns a dictionary with information on the game, team and odds.
+    The dictionary is in format:
+        {game_id:
+            {'tournament_id', 'tournament', 'score_home', 'score_away', 'time'
+            , team_id_X:
+            {'num', 'den'}
+    """
+
+    #print("Need to update this to get the tournament ID for each game")
+    #print("Need to update this to get the tournament ID for each game")
+    
+
+    ## Import any modules required
+    import re                       ## Regular expressions
+    import dict_recur as dr         ## this module is on python path
+    
+    ## Missing score strings (goal - when goal happens)
+    miss_score_list = ['goal!', 'update', '']
+
+    ## keys to keep
+    keysToKeep = ['id', 'data-name', 'data-odds', 'data-num', 'data-denom']
+
+    ## Home-flag re-mapping
+    homeFlagMap = {1:'H', 2:'D', 3:'A'}
+    
+
+    ## Initialise dictionary holding all tournaments on page
+    tournamentEvents = {}
+
+    start = datetime.now()
+    ## Get all 'tournaments' in the page
+    tournaments = soup.find_all('div', {'class':'markets-group-container'})
+    end = datetime.now()
+    #print("Processed {} tournaments took {}".format(len(tournaments), end-start))
+
+    
+##    tIDs = []
+##    tidx = 0
+##    for t in [t.next_element for t in tournaments]:
+##        
+##        tidx = tidx + 1
+##        if t.has_attr('data-entityid'):
+##            tIDs.append(t['data-entityid'])
+##        else:
+##            print("Tournament {}, {} has no ID".format(tidx, tNames[tidx]))
+    
+    
+    
+
+    #print("Creating dictionary holding games for each tournament".format())
+    ## Create dictionary in format {tid:{name=/string/, games=/bs4resultset/}}
+    #tournamentEvents = {tid:{'name':tn, 'games':t.find_all('div', {'class':'event'})} for tid in tIDs for tn in tNames for t in tournaments}
+    #pdb.set_trace()
+
+    #print("Finshed processing took {}".format((datetime.datetime.now()-start)))
+    
+    ## Key for attribute holding date of game
+    sDateKey = 'data-startdatetime'
+
+    ## Check that the home team is always first in the list
+    homes = []
+    
+    ## Init dictionary to hold all games
+    gamedict = {}
+
+    tCounter = 0
+
+          
+    ## For each tournament, keep a note of the number of events
+    eCounter = 0
+
+    #pdb.set_trace()
+    ## Loop through each tournament
+    for tournament in tournaments: #tournamentsEvents.keys():
+
+        ## Keep note of tournaments being processed
+        tCounter = tCounter + 1
+
+        ## Get tournament ID
+        tournamentID = tournament.next_element['data-entityid']
+
+        ## Get tournament names
+        tName = tournament.find('h2').text
+        
+
+        start = datetime.now()
+        ## Get all games for each tournament
+        events = tournament.find_all('div', {'class':'event'})
+        end = datetime.now()
+        #print("Identified {} games for tournament {} with name {}".format(len(events), tCounter, tName))
+        
+
+        #print("Getting information for games within tournament {}".format(tName))
+        ## For each event in each tournament
+        for event in events: #tournamentEvents[tournament]['games']:
+
+            #pdb.set_trace()
+            ## Iterate counter
+            eCounter = eCounter + 1
+
+            ## Event ID
+            eventID = event['id'] 
+            
+            ## Start time
+            if event.has_attr(sDateKey):
+                startTime = event['data-startdatetime']
+            else:
+                print("No startdate iteration {}, ID = {}".format(eCounter, eventID))
+                startTime = None
+            
+            ## Current time
+            #pdb.set_trace()
+            timeTag = event.find('div', {'class':'btmarket__boundary'})
+            #tt2 = event.find('div', {'class':'btmarket__content'}).find('time')
+            if timeTag != None:
+                
+                currentTime = timeTag.text
+            else:
+
+                pdb.set_trace()
+                continue
+                print("Iteration {} of {}, no time".format(eCounter, len(events)))
+                #pdb.set_trace()
+                currentTime = -9
+                
+            ## Update game dictionary with this game
+            dr.update(gamedict, {eventID:{'startTime':startTime, 'currentTime':currentTime}})
+
+            ##########################
+            ## Scores
+            ##########################
+
+            
+            ## BS tag for scores
+            scoresTag = event.find_all('label', {'class':'btmarket__livescore'})[0]
+
+            scoresDict = {}
+
+            ## Score - home
+            scoresDict.update({'H':scoresTag.find_next().text})
+
+            ## Score - away
+            scoresDict.update({'A':scoresTag.find_next().find_next().text})
+
+            ##############################
+            ## Teams
+            ##############################
+            
+            ## For each event, get information on teams
+
+            teamInfo = {}
+            ## Get the teams
+            teams = event.find_all('div', {'class':"btmarket__selection"})
+            teams = [t.next_element for t in teams]
+
+            teamCounter = 0 
+            for team in teams:
+                teamCounter = teamCounter + 1
+
+                ## Team information as dictionary
+                tDict1 = dict(team.attrs)
+
+
+                ## String holding A or H
+                homeFlag = homeFlagMap[teamCounter]
+                
+                ## Only keep keys I want
+                tDict = {key: tDict1[key] for key in keysToKeep}
+
+                ## Add on score for 'home' or 'away'             
+                if homeFlag != 'D':
+                    tDict.update({'score':scoresDict[homeFlag]})
+
+                #pdb.set_trace()
+                ## Update (recursively) the event dictionary
+                #pdb.set_trace()
+                dr.update(gamedict, {eventID:{'tournamentID':tournamentID, 'tournament':tName, homeFlag:tDict}})
+            #pdb.set_trace()
+
+            
+            #pdb.set_trace()
+
+    print("End of looping over {} games".format(len(tournaments)))
+    #pdb.set_trace()
+    return gamedict
+
+
+
 
 def getgameslist_sel(browser
                      , event_exclusions_list
@@ -208,167 +434,6 @@ def getgameslist_sel(browser
 
 
 
-def get_static_events(browser
-                     , soup
-                     , event_exclusions_list
-                     , write_html = False
-                     , write_scripts = False
-                     , suffix=None):
-
-    """
-
-        Run through browser page, and return dictionary with information
-        2017-04-08- updated.
-        the previous code didn't work too well.
-        
-    """
-    
-    pdb.set_trace()
-    from bs4 import BeautifulSoup as bs
-    import sys
-    import json
-    
-    ## Script string - used to get the script we're interested in
-    script_string = "document.aip_list.create_prebuilt_event("      ## used to identify scripts of interest
-    script_string_end = ");"
-
-    ## If no soup provided, get it from browser
-    if soup == None:
-        ################################
-        ## Get page source
-        ################################
-        
-        ps = browser.page_source
-
-        ## Making soup
-        print("Making soup.....")
-        soup = bs(ps, 'html.parser')
-        
-        """  OK - Andrew added 2019-03-26
-        You get soup 
-        sps = soup.find_all('div', {'class':'event'})
-        with sps - find all class-btmarket__selection"""
-
-        ################################################
-        ## Entire HTML - If user wants to write out html
-        ################################################
-        
-        if write_html:
-            #out_html = input("Type name of file to write HTML out to.\nwhill.txt is standard")
-            #out_html = 'html_out' + str(suffix) + '.txt'
-            ## Write out text file of HTML
-            file = open(out_html, 'wb')
-            file.write(ps.encode('utf-8'))
-            file.close()
-            print("HTML data written to file: ", out_html)
-
-    ################################################
-    ## Create function which returns list of games for tournament in script tag
-    ################################################
-        
-    #### Find all script objects in response - where script_string is in script
-    # scripts = [s for s in soup.find_all('script', {'type':'text/javascript', 'language':'Javascript'}) if script_string in s.text]
-    #scripts = [s.text[s.text.find(script_string)+len(script_string):s.text.find(script_string_end)] for s in soup.find_all('script', {'type':'text/javascript', 'language':'Javascript'}) if script_string in s.text]
-    event_scripts = [s.text for s in soup.find_all('script', {'type':'text/javascript', 'language':'Javascript'}) if script_string in s.text]
-    
-    ## Each event script may have one or more events - these should be extracted separately
-    
-    event_scripts_separated = [s.split(script_string) for s in event_scripts]
-    
-    ## Now remove any missing or blank space
-    event_list = [ event_scripts_separated[i][j] for i in range(len(event_scripts_separated)) for j in range(len(event_scripts_separated[i])) if event_scripts_separated[i][j].strip() != '']
-    
-    ## With each event, remove the extra text around the start and end
-    ## I.e. ready to load into JSON 
-    event_list_json = [e[:e.find(script_string_end)-len(script_string_end)] for e in event_list]
-    
-    print("Number of scripts to turn into JSON data = ", len(event_list_json))
-    dict_list = [json.loads(event) for event in event_list_json]
-    
-    ## Return dictionary with event ID as key
-    return {dict_list[i]['event']:dict_list[i] for i in range(len(dict_list))}
-    ## create dictionary with event IDs as the key
-    
-    
-def get_static_events_201903(browser
-                     , soup
-                     , event_exclusions_list
-                     , write_html = False
-                     , write_scripts = False
-                     , suffix=None):
-
-    """
-
-        Run through browser page, and return dictionary with information
-        2017-04-08- updated.
-        the previous code didn't work too well.
-        
-    """
-    
-    
-    from bs4 import BeautifulSoup as bs
-    import sys
-    import json
-    
-    ## Script string - used to get the script we're interested in
-    script_string = "document.aip_list.create_prebuilt_event("      ## used to identify scripts of interest
-    script_string_end = ");"
-
-    ## If no soup provided, get it from browser
-    if soup == None:
-        ################################
-        ## Get page source
-        ################################
-        
-        ps = browser.page_source
-
-        ## Making soup
-        print("Making soup.....")
-        soup = bs(ps, 'html.parser')
-
-        ################################################
-        ## Entire HTML - If user wants to write out html
-        ################################################
-        
-        if write_html:
-            #out_html = input("Type name of file to write HTML out to.\nwhill.txt is standard")
-            #out_html = 'html_out' + str(suffix) + '.txt'
-            ## Write out text file of HTML
-            file = open(out_html, 'wb')
-            file.write(ps.encode('utf-8'))
-            file.close()
-            print("HTML data written to file: ", out_html)
-
-    ################################################
-    ## Create function which returns list of games for tournament in script tag
-    ################################################
-        
-    #### Find all script objects in response - where script_string is in script
-    # scripts = [s for s in soup.find_all('script', {'type':'text/javascript', 'language':'Javascript'}) if script_string in s.text]
-    #scripts = [s.text[s.text.find(script_string)+len(script_string):s.text.find(script_string_end)] for s in soup.find_all('script', {'type':'text/javascript', 'language':'Javascript'}) if script_string in s.text]
-    event_scripts = [s.text for s in soup.find_all('script', {'type':'text/javascript', 'language':'Javascript'}) if script_string in s.text]
-    
-    ### 
-    
-    ## Each event script may have one or more events - these should be extracted separately
-    
-    event_scripts_separated = [s.split(script_string) for s in event_scripts]
-    
-    ## Now remove any missing or blank space
-    event_list = [ event_scripts_separated[i][j] for i in range(len(event_scripts_separated)) for j in range(len(event_scripts_separated[i])) if event_scripts_separated[i][j].strip() != '']
-    
-    ## With each event, remove the extra text around the start and end
-    ## I.e. ready to load into JSON 
-    event_list_json = [e[:e.find(script_string_end)-len(script_string_end)] for e in event_list]
-    
-    print("Number of scripts to turn into JSON data = ", len(event_list_json))
-    dict_list = [json.loads(event) for event in event_list_json]
-    
-    ## Return dictionary with event ID as key
-    return {dict_list[i]['event']:dict_list[i] for i in range(len(dict_list))}
-    ## create dictionary with event IDs as the key
-    
-    
 
 def gettags(browser, tag, myclass, myclassstring):
     """
@@ -387,181 +452,6 @@ def gettags(browser, tag, myclass, myclassstring):
     else:
         return soup.find_all(tag)
     
-
-def get_live_info(soup):
-
-    """
-    This module takes soup (from BeautifulSoup (bs4)) and returns a dictionary with information on the game, team and odds.
-    The dictionary is in format:
-        {game_id:
-            {'tournament_id', 'tournament', 'score_home', 'score_away', 'time'
-            , team_id_X:
-            {'num', 'den'}
-    """
-
-    print("Need to update this to get the tournament ID for each game")
-    print("Need to update this to get the tournament ID for each game")
-    
-
-    ## Import any modules required
-    import re                       ## Regular expressions
-    import dict_recur as dr         ## this module is on python path
-    
-    ## Missing score strings (goal - when goal happens)
-    miss_score_list = ['goal!', 'update', '']
-
-    ## keys to keep
-    keysToKeep = ['id', 'data-name', 'data-odds', 'data-num', 'data-denom']
-
-    ## Home-flag re-mapping
-    homeFlagMap = {1:'H', 2:'D', 3:'A'}
-    
-
-    ## Initialise dictionary holding all tournaments on page
-    tournamentEvents = {}
-    
-    ## Get all 'tournaments' in the page
-    tournaments = soup.find_all('div', {'class':'markets-group-container'})
-
-    ## Get tournament names
-    tNames = [t.find('h2').text for t in tournaments]
-
-    tIDs = []
-    tidx = 0
-    for t in [t.next_element for t in tournaments]:
-        
-        tidx = tidx + 1
-        if t.has_attr('data-entityid'):
-            tIDs.append(t['data-entityid'])
-        else:
-            print("Tournament {}, {} has no ID".format(tidx, tNames[tidx]))
-    
-    #start = datetime.datetime.now()
-    #print("Processing {} tournaments to get the games".format(len(tIDs)))
-    
-    ## For each tournament -get the games in side
-    ## Creates dictionary in format: {tournament: [game_info1, game_info2, ..., game_infoN]}
-
-    #tournamentEvents.update({tid:{'name':tn} for tid in tIDs for tn in tNames })
-    #pdb.set_trace()
-    #pdb.set_trace()
-    #tournamentEvents = {tid:{tn:t.find_all('div', {'class':'event'})}
-
-    ## Create dictionary in format {tid:{name=/string/, games=/bs4resultset/}}
-    tournamentEvents = {tid:{'name':tn, 'games':t.find_all('div', {'class':'event'})} for tid in tIDs for tn in tNames for t in tournaments}
-    #pdb.set_trace()
-
-    #print("Finshed processing took {}".format((datetime.datetime.now()-start)))
-    
-    ## Key for attribute holding date of game
-    sDateKey = 'data-startdatetime'
-
-    ## Check that the home team is always first in the list
-    homes = []
-    
-    ## Init dictionary to hold all games
-    gamedict = {}
-
-    tCounter = 0
-
-    #pdb.set_trace()
-    ## Loop through each tournament
-    for tournament in tournamentEvents.keys():
-
-        ## Keep note of tournaments being processed
-        tCounter = tCounter + 1
-
-        ## For each tournament, keep a note of the number of events
-
-        eCounter = 0
-
-        ## For each event in each tournament
-        for event in tournamentEvents[tournament]['games']:
-    
-            
-            ## Iterate counter
-            eCounter = eCounter + 1
-
-            ## Event ID
-            eventID = event['id'] 
-            
-            ## Start time
-            if event.has_attr(sDateKey):
-                startTime = event['data-startdatetime']
-            else:
-                print("No startdate iteration {}, ID = {}".format(eCounter, eventID))
-                startTime = None
-            
-            ## Current time
-            #pdb.set_trace()
-            timeTag = event.find('div', {'class':'btmarket__boundary'})
-            if timeTag != None:
-                currentTime = timeTag.text
-            else:
-                print("Iteration {} of {}, no time".format(eCounter, len(tournamentEvents[tournament])))
-                #pdb.set_trace()
-                currentTime = -9
-                
-            ## Update game dictionary with this game
-            dr.update(gamedict, {eventID:{'startTime':startTime, 'currentTime':currentTime}})
-
-            ##########################
-            ## Scores
-            ##########################
-
-            
-            ## BS tag for scores
-            scoresTag = event.find_all('label', {'class':'btmarket__livescore'})[0]
-
-            scoresDict = {}
-
-            ## Score - home
-            scoresDict.update({'H':scoresTag.find_next().text})
-
-            ## Score - away
-            scoresDict.update({'A':scoresTag.find_next().find_next().text})
-
-            ##############################
-            ## Teams
-            ##############################
-            
-            ## For each event, get information on teams
-
-            teamInfo = {}
-            ## Get the teams
-            teams = event.find_all('div', {'class':"btmarket__selection"})
-            teams = [t.next_element for t in teams]
-
-            teamCounter = 0 
-            for team in teams:
-                teamCounter = teamCounter + 1
-
-                ## Team information as dictionary
-                tDict1 = dict(team.attrs)
-
-
-                ## String holding A or H
-                homeFlag = homeFlagMap[teamCounter]
-                
-                ## Only keep keys I want
-                tDict = {key: tDict1[key] for key in keysToKeep}
-
-                ## Add on score for 'home' or 'away'             
-                if homeFlag != 'D':
-                    tDict.update({'score':scoresDict[homeFlag]})
-
-                #pdb.set_trace()
-                ## Update (recursively) the event dictionary
-                #pdb.set_trace()
-                dr.update(gamedict, {eventID:{'tournamentID':tournament, 'tournament':tournamentEvents[tournament]['name'], homeFlag:tDict}})
-            #pdb.set_trace()
-
-            
-            #pdb.set_trace()
-
-    print("End of looping over {} games".format(len(tournamentEvents)))
-    return gamedict
-
         
 
     
@@ -1085,125 +975,6 @@ def get_live_info_20190331(soup):
     return game_dict
     
 
-def BLAHDEBLAH20180426():
-    
-    
-    #################################################
-    ## Game level info (i.e. parent to teams) ##
-    #################################################
-            
-    ## For each team, get the parent, game ID and current time of event in browser
-    
-    game_id_time = []
-    tgidt = {}
-    #pdb.set_trace()
-    print("Looping through soup for odds information to isolate game information")
-   
-
-                
-    ks = list(tgidt.keys())
-    
-          
-    
-            
-    #game_id_time = [ [game for game in o.findAllPrevious('a', {'class':'Score'}) if 'start' in game['id']][0] for o in odds_info]
-
-    
-    ## Get all game IDs (i.e. the ID of the game that each team belongs to)
-    print("Looping through second lot of game information to isolate game IDs.  This list has '{}'".format(len(game_id_time)))
-    gidt = {}
-    
-    
-    #game_ids = list(set(game_ids))
-    
-    ## Team -> Game ID dictionary 
-    team_dict = {team_ids[i]:game_ids[i] for i in range(len(team_ids))}
-    #pdb.set_trace
-    #print(team_dict)
-    #input("wait")
-    
-    ###################################################
-    ## Create dictionary for games -> teams -> odds
-    ###################################################
-    
-    game_odds = {}
-    
-    ## Initialise dictionary with game IDs
-    for game in game_ids:
-        game_odds.update({game:{}})
-
-
-    ##############################
-    ## Times ##
-    ##############################
-        
-    ## Get all game times (in seconds)
-    time_strings = [game.contents[0].strip() for game in game_id_time]
-    
-    ## Get true/false list for time_strings
-    #events_to_keep = [string.strip().casefold() != 'live' for string in time_strings]
-    
-    event_times = []
-    
-    ## Get list of indices for separating out mins/seconds
-    for nexttime in time_strings:
-        if nexttime.casefold() == 'live':
-            event_times.append(-9)
-        else:
-            mins = nexttime[:nexttime.find(':')]
-            secs = nexttime[nexttime.find(':')+1:]
-            
-            ## Time in seconds
-            event_times.append( int(mins) * 60 + int(secs) )
-    
-    
-    ##############################
-    ## Scores ##
-    ##############################
-
-    ## Get all scores (home/away tuple)
-    
-    game_scores = [ [game.text for game in o.findAllPrevious('a', {'class':'Score'}) if 'score' in game['id']][0] for o in odds_info]
-    
-    ## Sometimes weird font or other thigns can get into the text - to remove.
-    
-    ## Need a proper FOR loop as some scores may be a string (GOAL)
-    scores_home, scores_away = [], []
-    #pdb.set_trace()   
-    for i in range(len(event_times)):
-        score = game_scores[i]
-        ## If time refers to a 'live' event and not a game, set to -9
-        if event_times[i] == -9:
-            scores_home.append(-9)
-            scores_away.append(-9)
-            
-        ## Else, if scores are in the string (i.e. not 'live' or 'update')
-        elif game_scores[i].casefold() not in miss_score_list:
-            #print("game scores string = ", game_scores)
-            scores_home.append( int(score[:score.find('-')]) )
-            scores_away.append( int(score[score.find('-')+1:]) )
-        ## Else, set to missing
-        else:
-            #print("*************************** Module: get live info.\nCheck this module for the 'else' case for scores....")
-            scores_home.append(-9)
-            scores_away.append(-9)
-    
-    ## Now upate game dictionary       
-    game_time = {game_ids[i]:
-                 {'time':event_times[i]
-                  , 'score_home':scores_home[i]
-                  , 'score_away':scores_away[i]} for i in range(len(game_ids))}
-    #pdb.set_trace()   
-            
-        
-
-    ## Create dictionary with game, time and scores
-    dr.update(game_odds, game_time)
-    pdb.set_trace()
-    ##  Finally - output dictionary 
-    return game_odds
-
-   
 def get_live_info_archive(soup):
 
     ####################################################################################
@@ -1792,3 +1563,294 @@ def pickle_livestatic(live, static):
     
     
     
+
+
+
+
+##############################################################
+##############################################################
+
+
+def get_static_events(browser
+                     , soup
+                     , event_exclusions_list
+                     , write_html = False
+                     , write_scripts = False
+                     , suffix=None):
+
+    """
+
+        Run through browser page, and return dictionary with information
+        2017-04-08- updated.
+        the previous code didn't work too well.
+        
+    """
+    
+    pdb.set_trace()
+    from bs4 import BeautifulSoup as bs
+    import sys
+    import json
+    
+    ## Script string - used to get the script we're interested in
+    script_string = "document.aip_list.create_prebuilt_event("      ## used to identify scripts of interest
+    script_string_end = ");"
+
+    ## If no soup provided, get it from browser
+    if soup == None:
+        ################################
+        ## Get page source
+        ################################
+        
+        ps = browser.page_source
+
+        ## Making soup
+        print("Making soup.....")
+        soup = bs(ps, 'html.parser')
+        
+        """  OK - Andrew added 2019-03-26
+        You get soup 
+        sps = soup.find_all('div', {'class':'event'})
+        with sps - find all class-btmarket__selection"""
+
+        ################################################
+        ## Entire HTML - If user wants to write out html
+        ################################################
+        
+        if write_html:
+            #out_html = input("Type name of file to write HTML out to.\nwhill.txt is standard")
+            #out_html = 'html_out' + str(suffix) + '.txt'
+            ## Write out text file of HTML
+            file = open(out_html, 'wb')
+            file.write(ps.encode('utf-8'))
+            file.close()
+            print("HTML data written to file: ", out_html)
+
+    ################################################
+    ## Create function which returns list of games for tournament in script tag
+    ################################################
+        
+    #### Find all script objects in response - where script_string is in script
+    # scripts = [s for s in soup.find_all('script', {'type':'text/javascript', 'language':'Javascript'}) if script_string in s.text]
+    #scripts = [s.text[s.text.find(script_string)+len(script_string):s.text.find(script_string_end)] for s in soup.find_all('script', {'type':'text/javascript', 'language':'Javascript'}) if script_string in s.text]
+    event_scripts = [s.text for s in soup.find_all('script', {'type':'text/javascript', 'language':'Javascript'}) if script_string in s.text]
+    
+    ## Each event script may have one or more events - these should be extracted separately
+    
+    event_scripts_separated = [s.split(script_string) for s in event_scripts]
+    
+    ## Now remove any missing or blank space
+    event_list = [ event_scripts_separated[i][j] for i in range(len(event_scripts_separated)) for j in range(len(event_scripts_separated[i])) if event_scripts_separated[i][j].strip() != '']
+    
+    ## With each event, remove the extra text around the start and end
+    ## I.e. ready to load into JSON 
+    event_list_json = [e[:e.find(script_string_end)-len(script_string_end)] for e in event_list]
+    
+    print("Number of scripts to turn into JSON data = ", len(event_list_json))
+    dict_list = [json.loads(event) for event in event_list_json]
+    
+    ## Return dictionary with event ID as key
+    return {dict_list[i]['event']:dict_list[i] for i in range(len(dict_list))}
+    ## create dictionary with event IDs as the key
+    
+    
+def get_static_events_201903(browser
+                     , soup
+                     , event_exclusions_list
+                     , write_html = False
+                     , write_scripts = False
+                     , suffix=None):
+
+    """
+
+        Run through browser page, and return dictionary with information
+        2017-04-08- updated.
+        the previous code didn't work too well.
+        
+    """
+    
+    
+    from bs4 import BeautifulSoup as bs
+    import sys
+    import json
+    
+    ## Script string - used to get the script we're interested in
+    script_string = "document.aip_list.create_prebuilt_event("      ## used to identify scripts of interest
+    script_string_end = ");"
+
+    ## If no soup provided, get it from browser
+    if soup == None:
+        ################################
+        ## Get page source
+        ################################
+        
+        ps = browser.page_source
+
+        ## Making soup
+        print("Making soup.....")
+        soup = bs(ps, 'html.parser')
+
+        ################################################
+        ## Entire HTML - If user wants to write out html
+        ################################################
+        
+        if write_html:
+            #out_html = input("Type name of file to write HTML out to.\nwhill.txt is standard")
+            #out_html = 'html_out' + str(suffix) + '.txt'
+            ## Write out text file of HTML
+            file = open(out_html, 'wb')
+            file.write(ps.encode('utf-8'))
+            file.close()
+            print("HTML data written to file: ", out_html)
+
+    ################################################
+    ## Create function which returns list of games for tournament in script tag
+    ################################################
+        
+    #### Find all script objects in response - where script_string is in script
+    # scripts = [s for s in soup.find_all('script', {'type':'text/javascript', 'language':'Javascript'}) if script_string in s.text]
+    #scripts = [s.text[s.text.find(script_string)+len(script_string):s.text.find(script_string_end)] for s in soup.find_all('script', {'type':'text/javascript', 'language':'Javascript'}) if script_string in s.text]
+    event_scripts = [s.text for s in soup.find_all('script', {'type':'text/javascript', 'language':'Javascript'}) if script_string in s.text]
+    
+    ### 
+    
+    ## Each event script may have one or more events - these should be extracted separately
+    
+    event_scripts_separated = [s.split(script_string) for s in event_scripts]
+    
+    ## Now remove any missing or blank space
+    event_list = [ event_scripts_separated[i][j] for i in range(len(event_scripts_separated)) for j in range(len(event_scripts_separated[i])) if event_scripts_separated[i][j].strip() != '']
+    
+    ## With each event, remove the extra text around the start and end
+    ## I.e. ready to load into JSON 
+    event_list_json = [e[:e.find(script_string_end)-len(script_string_end)] for e in event_list]
+    
+    print("Number of scripts to turn into JSON data = ", len(event_list_json))
+    dict_list = [json.loads(event) for event in event_list_json]
+    
+    ## Return dictionary with event ID as key
+    return {dict_list[i]['event']:dict_list[i] for i in range(len(dict_list))}
+    ## create dictionary with event IDs as the key
+    
+
+
+
+
+def BLAHDEBLAH20180426():
+    
+    
+    #################################################
+    ## Game level info (i.e. parent to teams) ##
+    #################################################
+            
+    ## For each team, get the parent, game ID and current time of event in browser
+    
+    game_id_time = []
+    tgidt = {}
+    #pdb.set_trace()
+    print("Looping through soup for odds information to isolate game information")
+   
+
+                
+    ks = list(tgidt.keys())
+    
+          
+    
+            
+    #game_id_time = [ [game for game in o.findAllPrevious('a', {'class':'Score'}) if 'start' in game['id']][0] for o in odds_info]
+
+    
+    ## Get all game IDs (i.e. the ID of the game that each team belongs to)
+    print("Looping through second lot of game information to isolate game IDs.  This list has '{}'".format(len(game_id_time)))
+    gidt = {}
+    
+    
+    #game_ids = list(set(game_ids))
+    
+    ## Team -> Game ID dictionary 
+    team_dict = {team_ids[i]:game_ids[i] for i in range(len(team_ids))}
+    #pdb.set_trace
+    #print(team_dict)
+    #input("wait")
+    
+    ###################################################
+    ## Create dictionary for games -> teams -> odds
+    ###################################################
+    
+    game_odds = {}
+    
+    ## Initialise dictionary with game IDs
+    for game in game_ids:
+        game_odds.update({game:{}})
+
+
+    ##############################
+    ## Times ##
+    ##############################
+        
+    ## Get all game times (in seconds)
+    time_strings = [game.contents[0].strip() for game in game_id_time]
+    
+    ## Get true/false list for time_strings
+    #events_to_keep = [string.strip().casefold() != 'live' for string in time_strings]
+    
+    event_times = []
+    
+    ## Get list of indices for separating out mins/seconds
+    for nexttime in time_strings:
+        if nexttime.casefold() == 'live':
+            event_times.append(-9)
+        else:
+            mins = nexttime[:nexttime.find(':')]
+            secs = nexttime[nexttime.find(':')+1:]
+            
+            ## Time in seconds
+            event_times.append( int(mins) * 60 + int(secs) )
+    
+    
+    ##############################
+    ## Scores ##
+    ##############################
+
+    ## Get all scores (home/away tuple)
+    
+    game_scores = [ [game.text for game in o.findAllPrevious('a', {'class':'Score'}) if 'score' in game['id']][0] for o in odds_info]
+    
+    ## Sometimes weird font or other thigns can get into the text - to remove.
+    
+    ## Need a proper FOR loop as some scores may be a string (GOAL)
+    scores_home, scores_away = [], []
+    #pdb.set_trace()   
+    for i in range(len(event_times)):
+        score = game_scores[i]
+        ## If time refers to a 'live' event and not a game, set to -9
+        if event_times[i] == -9:
+            scores_home.append(-9)
+            scores_away.append(-9)
+            
+        ## Else, if scores are in the string (i.e. not 'live' or 'update')
+        elif game_scores[i].casefold() not in miss_score_list:
+            #print("game scores string = ", game_scores)
+            scores_home.append( int(score[:score.find('-')]) )
+            scores_away.append( int(score[score.find('-')+1:]) )
+        ## Else, set to missing
+        else:
+            #print("*************************** Module: get live info.\nCheck this module for the 'else' case for scores....")
+            scores_home.append(-9)
+            scores_away.append(-9)
+    
+    ## Now upate game dictionary       
+    game_time = {game_ids[i]:
+                 {'time':event_times[i]
+                  , 'score_home':scores_home[i]
+                  , 'score_away':scores_away[i]} for i in range(len(game_ids))}
+    #pdb.set_trace()   
+            
+        
+
+    ## Create dictionary with game, time and scores
+    dr.update(game_odds, game_time)
+    pdb.set_trace()
+    ##  Finally - output dictionary 
+    return game_odds
+
+   

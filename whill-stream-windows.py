@@ -8,7 +8,7 @@
 from bs4 import BeautifulSoup as bs
 from datetime import datetime
 import json
-import time
+
 import os, sys
 
 
@@ -20,11 +20,6 @@ import pickle
 #import pdb
 #pdb.set_trace()
 
-##################################
-## Some settings
-##################################
-
-iRefreshIters = 15
 
 ##########################################
 ## Import selenium
@@ -79,7 +74,7 @@ print("Working directory changed to '{}'".format(mainpath))
 ###########################
 
 ## Get browser to webpage
-browser = mf.initbrowser(url_main, hidebrowser=True)
+browser = mf.initbrowser(url_main, hidebrowser=False)
 
 ## Check that browser has not went to another URL (because no games are loaded)
 url_loaded = browser.current_url

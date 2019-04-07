@@ -4,7 +4,7 @@ In game betting and scraping related to sports.  This progam records the scores 
 
 ## Author: Andrew Craik
 
-# Note (2019-09-07)
+## Note (2019-09-07)
 
 Please be aware that William Hill updated their website and my original code no longer worked.  I'm currently developing a branch which will make the original code work.  The updated are currently being tested and I should have the new, working, merged with the master branch soon.
 

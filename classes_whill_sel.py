@@ -95,26 +95,31 @@ class Game:
     def update_teams(self, live_event_info):
     
         """
-        This function is called to update the odds and scores for each team in a game
+        This function is called by the main engine to update the odds and scores for each team in a game
         """
-        
+
+
+        """
+
+"""
         ## Get current time (in seconds)
         #pdb.set_trace()
         time1 = live_event_info['currentTime']
         time2 = int(time1[:2])*60 + int(time1[4:5])
         
-        
         ## Iterate through each team in game
         for team in self.teams:
-                
+     
             ## Only try an update if teams information in live info
-            if team.market_id in live_event_info:
+            if team.market_id in live_event_info[team.home].values():
 
                 ## Update odds
-                team.update_odds(time2, live_event_info[team.market_id], time)
+                team.update_odds(time2, live_event_info[team.home])
 
+                
                 # Update score, if changed (or not yet initialised)
-                team.update_score(time2, live_info = live_event_info)
+                team.update_score(time2, live_event_info[team.home])
+        
                     
    
     def update_game(self, new_game):
@@ -122,12 +127,16 @@ class Game:
         """ Update DB:
                This function updates the class instance with new informatsion on odds and scores
         """
+
+        """
+<div class="event" id="OB_EV14426799" data-entityid="OB_EV14426799" data-displayed="true" data-betinrun="true" data-status="A" data-startdatetime="2019-04-08T10:30:00+00:00"><div class="btmarket"><div class="btmarket__content"><ul class="btmarket__content__icons"><li><span class="btmarket__name btmarket__name--disabled"><span class="event__badge event__badge--dark-blue live-at displayNone">Live At</span> <span class="event__badge live-in displayNone">Live In</span> <span class="showFutureStartTime displayNone"></span> <span class="live-in-min displayNone">min</span><div class="btmarket__boundary"><label class="wh-label btmarket__live go area-livescore event__status">16:12</label></div><span class="btmarket__name"></span></span></li></ul><ul class="btmarket__content-margins"><li><a title="Whittlesea vs Yarraville" class="btmarket__name btmarket__name--featured" href="/betting/en-gb/football/OB_EV14426799/whittlesea-vs-yarraville"><div class="btmarket__link-name btmarket__link-name--2-rows"><span>Whittlesea</span> <span>Yarraville</span></div><div class="btmarket__link-name btmarket__link-name--ellipsis show-for-desktop-medium">Whittlesea v Yarraville</div></a></li></ul><div class="btmarket__content__icons-side"><i class="icon-cash-in-pound"></i></div><div class="btmarket__livescore-wrapper area-livescore event__status in-play-scores"><label class="wh-label btmarket__livescore"><span class="btmarket__livescore-item team-a">1</span> <span class="btmarket__livescore-item team-b">0</span></label></div></div><div id="OB_MA719061306" class="btmarket__actions" data-entityid="OB_MA719061306" data-displayed="true" data-status="A" data-betinrun="true" data-hcapvalue=""><div class="btmarket__selection"><button id="OB_OU2331903319" class="btn betbutton oddsbutton" aria-label="Whittlesea at 2/5" data-name="Whittlesea" data-displayed="true" data-status="A" data-player="Whittlesea" data-entityid="OB_OU2331903319" data-market="OB_MA719061306" data-event="OB_EV14426799" data-odds="2/5" data-num="2" data-cs-score="-" data-denom="5" data-goal-name="Goal"><span class="betbutton__odds">2/5</span> <span class="icon"></span></button></div><div class="btmarket__selection"><button id="OB_OU2331903323" class="btn betbutton oddsbutton" aria-label="Draw at 15/4" data-name="Draw" data-displayed="true" data-status="A" data-player="Draw" data-entityid="OB_OU2331903323" data-market="OB_MA719061306" data-event="OB_EV14426799" data-odds="15/4" data-num="15" data-cs-score="-" data-denom="4" data-goal-name="Goal"><span class="betbutton__odds">15/4</span> <span class="icon"></span></button></div><div class="btmarket__selection"><button id="OB_OU2331903325" class="btn betbutton oddsbutton" aria-label="Yarraville at 4/1" data-name="Yarraville" data-displayed="true" data-status="A" data-player="Yarraville" data-entityid="OB_OU2331903325" data-market="OB_MA719061306" data-event="OB_EV14426799" data-odds="4/1" data-num="4" data-cs-score="-" data-denom="1" data-goal-name="Goal"><span class="betbutton__odds">4/1</span> <span class="icon"></span></button></div></div><div class="btmarket btmarket__more-bets-counter-wrapper show-for-desktop-medium"><a class="btmarket__name btmarket__more-bets-counter" href="/betting/en-gb/football/OB_EV14426799/whittlesea-vs-yarraville">+13</a></div></div><div class="btmarket btmarket__more-bets-wrapper"><div class="btmarket__content"><a class="btmarket__name btmarket__more-bets" href="/betting/en-gb/football/OB_EV14426799/whittlesea-vs-yarraville">More Bets <i class="icon-arrow-right"></i></a></div></div><div class="btmarket__actions"></div><hr class="-hr"></div>
+"""
         
         import dict_recur as dr
         
         ## List of attributes
         attr_list = ['odds', 'score']
-        
+
         ## For each team in DB
         try:
             for current_team in self.teams:
@@ -295,13 +304,14 @@ class Team:
     
             ## Get current score
             current_score = self.get_score()
-
-            ## Only process 'home' and 'away teams'
+            
+            ## Only process 'home' and 'away teams'li
             if self.home in ['H', 'A']:
+                
                 ## Get score for this team from live information
-                new_score = live_info['score']
+                new_score = int(live_info['score'])
                           
-            ## If the team is not 'draw' and the new score is different
+                ## If the team is not 'draw' and the new score is different
                 if current_score != new_score:
                         
                     ## Create dictionary with new score for this team
@@ -309,12 +319,14 @@ class Team:
                     
                     ## Update score dictionary with new score
                     self.score.update(new_score_dict)
-                    #print("*"*32, "\nGame ID = ", self.parent.event, " with ID - ", self.market_id, " - updated score for", self.name, "in tournament", self.parent.tournament)
-                
+                    
         def update_odds(self, time, live_info):
             """
             Update odds (self.odds) for each team
             """
+
+##            if self.market_id == 'OB_OU2331763426':
+##                pdb.set_trace()
         
             ## Only process if time is not missing (perhaps a live event?)
             if time != -9:
@@ -322,19 +334,26 @@ class Team:
                 ## From live data - Get odds for correct selection (matching on team name)
                 num = live_info['data-num']
                 den = live_info['data-denom']
-                
-                ## Calculate pseudo probability based on odds
-                prob = round(float(den) / (float(num) + float(den)), 3)
+
+                ## Check if odds are 'evens'
+                if live_info['data-odds'].casefold() == 'evs':
+                    prob = 0.5
+                else:
+                    
+                    ## Calculate pseudo probability based on odds
+                    prob = round(float(den) / (float(num) + float(den)), 3)
 
                 ## Create dictionary to update the team's info
                 new_odds = {time: {'num':num, 'den':den, 'prob':prob}}
-                
+                    
                 ## Get current numerator and denominator (most recent)
                 current_num = self.getodds_component('num')
                 current_den = self.getodds_component('den')
                                 
                 ## Check whether num/den have changed
                 if current_num != num or current_den != den:
+
+                    #pdb.set_trace()
                     
                     ####################################################
                     # Update odds

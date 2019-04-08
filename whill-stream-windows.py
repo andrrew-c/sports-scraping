@@ -1,4 +1,4 @@
-# %% All the stuff needed to start 
+ # %% All the stuff needed to start 
 
 ######################
 ## System modules
@@ -36,7 +36,7 @@ from selenium.webdriver.common.keys import Keys
 print("Imported own modules")
 
 ## Import class defintions
-from classes_whill_sel import *        ## mc = my classes
+import classes_whill_sel            ## mc = my classes
 import functions_whill_sel as mf
 
 #############################

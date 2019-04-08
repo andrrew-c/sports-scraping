@@ -161,15 +161,15 @@ def GamesEngine(browser, iters=None):
                             refreshBrowser = True
                             #print("Refresh browser first....")
 
-
+                        ## Game new to registry and not in blacklist - add it
                         Game(game, live_info[game])
             
-                ## Else game can be updated
-                else:
-                    Game._registry[game].update_teams(live_info[game]) 
+                ## Update teams for game
+                
+                Game._registry[game].update_teams(live_info[game]) 
 
             print("Processed {} games".format(len(live_info)))
-            pdb.set_trace
+            #pdb.set_trace
 
             ## If something has happened above to force browser refresh, refresh it
             ## Things that will cause it are:

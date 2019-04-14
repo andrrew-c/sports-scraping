@@ -228,6 +228,7 @@ def GamesEngine(browser, dbname, iters=None):
 
         debugStop()
         
+
         checkAndSaveDB(Game._registry, dbname)
         return Game._registry
         
@@ -236,7 +237,9 @@ def checkAndSaveDB(Games, dbname):
     """ Added: 2019-04-11 """
     check = input("Do you want to save the DB?\nY/N... ")
     if check.casefold() == 'y':
+
         updatedb(Game._registry, dbname)
+
     else:
         pass
 
@@ -564,6 +567,7 @@ def updatedb(games, dbout):
     db.close()
     
 def updatedbforce():
+
     updatedb(Game._registry, dbname)
 
 

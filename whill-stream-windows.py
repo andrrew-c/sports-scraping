@@ -68,6 +68,8 @@ mainpath = os.path.abspath(os.path.dirname(sys.argv[0]))
 os.chdir(mainpath)
 print("Working directory changed to '{}'".format(mainpath))
 
+## Path of shelve object
+whdbpath = os.path.join('..', '..', 'whill', 'whilldb')
 
 # %% Initialise browser 
 
@@ -101,37 +103,22 @@ def reload_modules():
     
 
 
-
-# Write out source
-#with open('blah.txt', 'wb') as f: f.write(ps.encode('utf-8'))
-
-## %%   Get the soup and try to get the events
-## Get some soup and try and find the games!!
-
-
-#a1 = soup.find_all('div', {'class':'event'})
-#a2 = [a for 
-
-# %% 
-#live_info = mf.get_live_info(soup)
-
-
-lists = []
+##lists = []
 #for i in range(3):
     #soup = bs(browser.page_source, 'html.parser')
     #lists.append(mf.get_live_info(soup))
 #    pdb.set_trace()
 
-soup = bs(browser.page_source, 'html.parser')
-tns = soup.find_all('div', {'class':'markets-group-container'})
-games = {i:tns[i].find_all('div', {'class':'event'}) for i in range(len(tns))}
-numgames = [len(games[i]) for i in games.keys()]
+##soup = bs(browser.page_source, 'html.parser')
+##tns = soup.find_all('div', {'class':'markets-group-container'})
+##games = {i:tns[i].find_all('div', {'class':'event'}) for i in range(len(tns))}
+##numgames = [len(games[i]) for i in games.keys()]
 
 
 #pdb.set_trace()
 
 ## Main run of browser
-game_list = mf.GamesEngine(browser)
+game_list = mf.GamesEngine(browser, whdbpath)
 
 
 iEngineRuns = 0

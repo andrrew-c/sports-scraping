@@ -86,7 +86,7 @@ def initbrowser(url, hidebrowser=False):
     return browser
 
 
-def GamesEngine(browser, iters=None):
+def GamesEngine(browser, dbname, iters=None):
 
     """
 
@@ -151,7 +151,7 @@ def GamesEngine(browser, iters=None):
                     
                 
                 print("Updating DB with {} games".format(len(Game._registry)))
-                updatedb(Game._registry, 'whilldb')
+                updatedb(Game._registry, dbname)
             
             ## Make some soup from browser HTML
             soup = bs(browser.page_source, 'html.parser')
@@ -220,7 +220,7 @@ def GamesEngine(browser, iters=None):
                     #endtime = datetime.utcnow()
                     time.sleep(3)
         ## 
-        checkAndSaveDB(Game, 'whilldb')
+        checkAndSaveDB(Game, dbname)
 
         ##### FIND A WAY TO PURGE GAMES WHICH HAVE COMPLETED AND REMOVE THEM FROM THE REGISTRY
             
@@ -228,7 +228,7 @@ def GamesEngine(browser, iters=None):
 
         debugStop()
         
-        checkAndSaveDB(Game._registry, 'whilldb')
+        checkAndSaveDB(Game._registry, dbname)
         return Game._registry
         
     
@@ -236,7 +236,7 @@ def checkAndSaveDB(Games, dbname):
     """ Added: 2019-04-11 """
     check = input("Do you want to save the DB?\nY/N... ")
     if check.casefold() == 'y':
-        updatedb(Game._registry, 'whilldb')
+        updatedb(Game._registry, dbname)
     else:
         pass
 
@@ -564,7 +564,7 @@ def updatedb(games, dbout):
     db.close()
     
 def updatedbforce():
-    updatedb(Game._registry, 'whilldb')
+    updatedb(Game._registry, dbname)
 
 
 def browserRefreshCheck(refreshCurrentCount, refreshAllowCount, refreshLastTime, refreshAllowance):

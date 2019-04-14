@@ -9,6 +9,8 @@ from bs4 import BeautifulSoup as bs
 from datetime import datetime
 import json
 
+import imp
+
 import os, sys
 
 
@@ -93,6 +95,11 @@ event_exclusions_list = {'MultiMatchMarkets':18351}
 ps = browser.page_source
 
 
+def reload_modules():
+    print(imp.reload(mf))
+    print(imp.reload(classes_whill_sel))
+    
+
 
 
 # Write out source
@@ -123,8 +130,24 @@ numgames = [len(games[i]) for i in games.keys()]
 
 #pdb.set_trace()
 
+## Main run of browser
+game_list = mf.GamesEngine(browser)
 
-mf.GamesEngine(browser)
+
+iEngineRuns = 0
+def RunEngine(iRunNum):
+
+    """
+        This function is attempting to run the engine repeatedly if an error occurs.
+    """
+    try:
+        iRunNum = iRunNum+ 1
+        mf.GamesEngine(browser)
+    except:
+        print("Error on run number {}:\n{}".format(iRunNum, e))
+        print("Will continue processing")
+        iRunNum = iRunNum+ 1
+        RunEngine(iRunNum = iRunNum+ 1)
 
     
 def CheckAttributeExists(obj, attr):

@@ -14,12 +14,15 @@ class Game:
     _changelist    = ['odds', 'score']
     _blacklist = []     ### Blacklisted IDs
     
-    def __init__(self, gameid, live_event_info):
+    def __init__(self, gameid, live_event_info, iterNum):
 
         
         """
             The Game class object
         """
+
+        if gameid == 'OB_EV14427415':
+            pdb.set_trace()
           
     
         from datetime import date
@@ -46,19 +49,23 @@ class Game:
         
         ## Add new game to game registry for this class
         self._registry.update({self.event:self})
-        
-        self.tournament_id      = live_event_info['tournamentID']   #static_event_info['type']['type_id']
-        self.tournament         = live_event_info['tournament']     #static_event_info['type']['type_name']
+
+        if not hasattr(live_event_info, 'tournamentID'):
+            print("No tournament ID for ID {}".format(self.event))
+            #return None
+        else:
+            self.tournament_id      = live_event_info['tournamentID']   #static_event_info['type']['type_id']
+            self.tournament         = live_event_info['tournament']     #static_event_info['type']['type_name']
         self.start_time         = live_event_info['startTime']      #static_event_info['start_time']
         #self.secs_to_start      = static_event_info['secs_to_start_time']
         #self.selections         = static_event_info['selections']
         
         ## Each game has three teams (home/away/draw)
-        self.teams              = self.initteams(gameid, live_event_info)
+        self.teams              = self.initteams(gameid, live_event_info, iterNum)
     #else:
      #   self._blacklist.append(static_event_info['event'])
    
-    def initteams(self, gameid, live_event_info):
+    def initteams(self, gameid, live_event_info, iterNum):
 
         """ 
         
@@ -67,7 +74,8 @@ class Game:
             
         """
         #print("Teams should be a dictionary with market_id as the ID - this would avoid the need for any FOR loops when matching teams")
-        return [Team(self, gameid, live_event_info['currentTime'], key, live_event_info[key]) for key in ['H', 'D', 'A']]
+        return [Team(self, gameid, live_event_info['currentTime'], key, live_event_info[key], iterNum) for key in ['H', 'D', 'A']]
+        
 
     def archive_init_events(self, events):
             """
@@ -92,7 +100,7 @@ class Game:
                             return True
 
 
-    def update_teams(self, live_event_info):
+    def update_teams(self, live_event_info, iterNum):
     
         """
         This function is called by the main engine to update the odds and scores for each team in a game
@@ -107,19 +115,31 @@ class Game:
         time1 = live_event_info['currentTime']
         time2 = int(time1[:2])*60 + int(time1[4:5])
         
-        ## Iterate through each team in game
-        for team in self.teams:
-     
-            ## Only try an update if teams information in live info
-            if team.market_id in live_event_info[team.home].values():
-
-                ## Update odds
-                team.update_odds(time2, live_event_info[team.home])
-
-                
-                # Update score, if changed (or not yet initialised)
-                team.update_score(time2, live_event_info[team.home])
+        if not hasattr(self, 'teams'):
+            pdb.set_trace()
+            #tnames = [t.name for t in self.teams]
+            print("Event {} has no teams attribute 'teams'".format(self.event))
+            
+            return None
         
+        else:
+            
+            ## Iterate through each team in game
+            for team in self.teams:
+
+                ## If team's home status (i.e. 'H', 'A' or 'D') in live data
+                if team.home in live_event_info:
+         
+                    ## Only try an update if teams information in live info
+                    if team.market_id in live_event_info[team.home].values():
+
+                        ## Update odds
+                        team.update_odds(time2, live_event_info[team.home], iterNum)
+
+                        
+                        # Update score, if changed (or not yet initialised)
+                        team.update_score(time2, live_event_info[team.home])
+            
                     
    
     def update_game(self, new_game):
@@ -128,11 +148,12 @@ class Game:
                This function updates the class instance with new informatsion on odds and scores
         """
 
-        """
-<div class="event" id="OB_EV14426799" data-entityid="OB_EV14426799" data-displayed="true" data-betinrun="true" data-status="A" data-startdatetime="2019-04-08T10:30:00+00:00"><div class="btmarket"><div class="btmarket__content"><ul class="btmarket__content__icons"><li><span class="btmarket__name btmarket__name--disabled"><span class="event__badge event__badge--dark-blue live-at displayNone">Live At</span> <span class="event__badge live-in displayNone">Live In</span> <span class="showFutureStartTime displayNone"></span> <span class="live-in-min displayNone">min</span><div class="btmarket__boundary"><label class="wh-label btmarket__live go area-livescore event__status">16:12</label></div><span class="btmarket__name"></span></span></li></ul><ul class="btmarket__content-margins"><li><a title="Whittlesea vs Yarraville" class="btmarket__name btmarket__name--featured" href="/betting/en-gb/football/OB_EV14426799/whittlesea-vs-yarraville"><div class="btmarket__link-name btmarket__link-name--2-rows"><span>Whittlesea</span> <span>Yarraville</span></div><div class="btmarket__link-name btmarket__link-name--ellipsis show-for-desktop-medium">Whittlesea v Yarraville</div></a></li></ul><div class="btmarket__content__icons-side"><i class="icon-cash-in-pound"></i></div><div class="btmarket__livescore-wrapper area-livescore event__status in-play-scores"><label class="wh-label btmarket__livescore"><span class="btmarket__livescore-item team-a">1</span> <span class="btmarket__livescore-item team-b">0</span></label></div></div><div id="OB_MA719061306" class="btmarket__actions" data-entityid="OB_MA719061306" data-displayed="true" data-status="A" data-betinrun="true" data-hcapvalue=""><div class="btmarket__selection"><button id="OB_OU2331903319" class="btn betbutton oddsbutton" aria-label="Whittlesea at 2/5" data-name="Whittlesea" data-displayed="true" data-status="A" data-player="Whittlesea" data-entityid="OB_OU2331903319" data-market="OB_MA719061306" data-event="OB_EV14426799" data-odds="2/5" data-num="2" data-cs-score="-" data-denom="5" data-goal-name="Goal"><span class="betbutton__odds">2/5</span> <span class="icon"></span></button></div><div class="btmarket__selection"><button id="OB_OU2331903323" class="btn betbutton oddsbutton" aria-label="Draw at 15/4" data-name="Draw" data-displayed="true" data-status="A" data-player="Draw" data-entityid="OB_OU2331903323" data-market="OB_MA719061306" data-event="OB_EV14426799" data-odds="15/4" data-num="15" data-cs-score="-" data-denom="4" data-goal-name="Goal"><span class="betbutton__odds">15/4</span> <span class="icon"></span></button></div><div class="btmarket__selection"><button id="OB_OU2331903325" class="btn betbutton oddsbutton" aria-label="Yarraville at 4/1" data-name="Yarraville" data-displayed="true" data-status="A" data-player="Yarraville" data-entityid="OB_OU2331903325" data-market="OB_MA719061306" data-event="OB_EV14426799" data-odds="4/1" data-num="4" data-cs-score="-" data-denom="1" data-goal-name="Goal"><span class="betbutton__odds">4/1</span> <span class="icon"></span></button></div></div><div class="btmarket btmarket__more-bets-counter-wrapper show-for-desktop-medium"><a class="btmarket__name btmarket__more-bets-counter" href="/betting/en-gb/football/OB_EV14426799/whittlesea-vs-yarraville">+13</a></div></div><div class="btmarket btmarket__more-bets-wrapper"><div class="btmarket__content"><a class="btmarket__name btmarket__more-bets" href="/betting/en-gb/football/OB_EV14426799/whittlesea-vs-yarraville">More Bets <i class="icon-arrow-right"></i></a></div></div><div class="btmarket__actions"></div><hr class="-hr"></div>
-"""
+        testID = ''#'OB_EV14441124'
         
         import dict_recur as dr
+
+        if new_game.event == testID:
+            pdb.set_trace()
         
         ## List of attributes
         attr_list = ['odds', 'score']
@@ -152,9 +173,23 @@ class Game:
                         
                             ## Update attribute
                             setattr(current_team, attr, current_team.update_team_attribute(new_team, attr))
+                            
+                            if new_game.event == testID:
+                                print("Jobby")
+                                pdb.set_trace()
+                        break
+        
+                            
                             #print("Updated team attribute: ", attr, " for team ", current_team.name, " to ", getattr(current_team, attr))
+        
+        except AttributeError as e:
+            print("Attribute error with event ID '{}'\n{}".format(self.event, e))
+            
+
         except:
             print("There's an issue with record:", self.event, "this will need checked.")
+            raise
+        
             
             
            
@@ -250,7 +285,7 @@ class Team:
         ## String to pull out score differs for home / away teams
         _score_lookup = {'H':'score_home', 'A':'score_away', 'D':''}
 
-        def __init__(self, parent, gameid, currentTime, homeflag, d_in_team):
+        def __init__(self, parent, gameid, currentTime, homeflag, d_in_team, iterNum):
 
             """
                 Inputs:
@@ -290,7 +325,7 @@ class Team:
             timesecs = int(currentTime[:2])*60 + int(currentTime[4:5])
             #pdb.set_trace()
             self.update_score(timesecs, d_in_team)
-            self.update_odds(timesecs, d_in_team)
+            self.update_odds(timesecs, d_in_team, iterNum)
             #pdb.set_trace() 
             
      
@@ -320,13 +355,10 @@ class Team:
                     ## Update score dictionary with new score
                     self.score.update(new_score_dict)
                     
-        def update_odds(self, time, live_info):
+        def update_odds(self, time, live_info, iterNum):
             """
             Update odds (self.odds) for each team
             """
-
-##            if self.market_id == 'OB_OU2331763426':
-##                pdb.set_trace()
         
             ## Only process if time is not missing (perhaps a live event?)
             if time != -9:
@@ -353,7 +385,10 @@ class Team:
                 ## Check whether num/den have changed
                 if current_num != num or current_den != den:
 
-                    #pdb.set_trace()
+                    if iterNum > 1:
+                        pass
+                        #print("Iteration number: {} team name: {} with currrent odds '{}' and new odds '{}'".format(iterNum, self.name, self.odds, new_odds))
+                        #pdb.set_trace()
                     
                     ####################################################
                     # Update odds
@@ -364,7 +399,7 @@ class Team:
             ## Else, time information is not ok
             else:
                 pass
-                #print("*"*30, "Update odds - not processing team ID:", self.market_id)
+                print("*"*30, "Update odds - not processing team ID:", self.market_id)
                 
             
         def getselection(self, d_in_event):

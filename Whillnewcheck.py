@@ -5,9 +5,56 @@ import pdb
 
 import classes_whill_sel
 
+whdbpath = os.path.join('..', '..', 'whill', 'whilldb')
+
 ## Open new DB
-db = shelve.open(os.path.join('whilldb'))
+db = shelve.open(whdbpath)
 ks = list(db.keys())
+
+## Get dates
+print("Getting dates...")
+dates = []
+i = 0
+for k in ks:
+    i = i + 1
+    print(i)
+    #try:
+        
+    dates.append(db[k].startdate)
+    #except: #EOFError as e:
+     #   print("Couldn't load\n{}".format(e))
+      #  continue
+dates = [db[i].startdate for i in ks]
+
+def gamesofDay(date):
+    """ Returns list of objects that match the date given in YYYY-mm-dd format"""
+    finalList= []
+    errors = []
+
+    i = 0
+    for k in db:
+        i = i+ 1
+        print(i)
+        #try:
+        if db[k].startdate == date:
+            finalList.append(db[k])
+##        except:
+##            print("Error...")
+##            errors.append(k)
+##            continue
+            
+            
+    if len(finalList) > 0:
+        input("Press return.")
+        return finalList, errors
+    else:
+        return [], errors
+
+print("Getting today's games")
+todaysGames, errors = gamesofDay('2019-04-15')
+
+## With today's games - get earliest time for all odds
+#firstOdds = (db[k].teams[0)
 
 print("There are {} games".format(len(db)))
 #db1 = db[ks[0]]
@@ -16,10 +63,11 @@ print("Checking teams")
 i = 0 
 for k in ks:
     i = i + 1
-    
+        
     hasteam = hasattr(db[k], 'teams')
     if not hasteam:
         print("game {}, start date = {}, id '{}' has NO teams = {}".format(i, db[k].startdate, k, hasteam))
+input("Check above.")
 
        
 

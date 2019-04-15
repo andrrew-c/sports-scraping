@@ -10,7 +10,11 @@ import time     ## Time delays
 ##################################
 
 ## How many iterations until DB saved?
-iRefreshIters = 3
+iRefreshIters = 15
+
+
+## Length of sleep if no games
+lenSleep = 15
 
 #refreshCurrentCount, refreshAllowCount, refreshLastTime, refreshAllowance):
 
@@ -196,6 +200,7 @@ def GamesEngine(browser, dbname, iters=None):
                             ## Game new to registry and not in blacklist - add it
                             Game(game, live_info[game], i)
                 
+
                     ## Update teams for game
                     Game._registry[game].update_teams(live_info[game], i)
 
@@ -220,15 +225,17 @@ def GamesEngine(browser, dbname, iters=None):
                     #endtime = datetime.utcnow()
                     time.sleep(3)
         ## 
-        checkAndSaveDB(Game, dbname)
+#        checkAndSaveDB(Game, dbname)
+            ## Else, there are no games
+            else:
+                print("No  games, sleep {}".format(lenSleep))
+                time.sleep(lenSleep)
 
         ##### FIND A WAY TO PURGE GAMES WHICH HAVE COMPLETED AND REMOVE THEM FROM THE REGISTRY
             
     except KeyboardInterrupt as e:
 
         debugStop()
-        
-
         checkAndSaveDB(Game._registry, dbname)
         return Game._registry
         
@@ -238,7 +245,7 @@ def checkAndSaveDB(Games, dbname):
     check = input("Do you want to save the DB?\nY/N... ")
     if check.casefold() == 'y':
 
-        updatedb(Game._registry, dbname)
+        updatedb(Games, dbname)
 
     else:
         pass

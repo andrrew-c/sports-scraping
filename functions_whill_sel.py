@@ -1,8 +1,11 @@
+################################
+## Import key modules
+################################
+
 import pdb
 from datetime import datetime
 
 import time     ## Time delays
-
 
 
 ##################################
@@ -97,7 +100,10 @@ def GamesEngine(browser, dbname, iters=None):
         Purpose:  This is the real engine of the scraper.
             
         Inputs:    browser - is an instance of a selenium browser.
+                dname - full of shelve object to be updated.  No extension required.
+                        If just a name given, then the shelve will be created in the current path
                     iters - Integer, determines how many times to loop over
+                    
                     
     """
 
@@ -108,6 +114,10 @@ def GamesEngine(browser, dbname, iters=None):
     ## Class definition - game object
     from classes_whill_sel import Game        ## mc = my classes
 
+    #####################################################
+    ## Some master settings for running program
+    #####################################################
+    
     ## How many times can browser be updated between allowed time
     refreshAllowCount = 3
 
@@ -120,17 +130,16 @@ def GamesEngine(browser, dbname, iters=None):
     ## Initialise browser refresh as 'now'
     refreshLastTime = datetime.now()
 
-    
-    """ Added: 2019-04-04 """
-
     ## If user has not specified a number, set to a relatively large number
     if iters == None:
         iters = 1000000
 
+    ######################################
+    ## Now for running the program!
+    ######################################
+        
     ## Error handling, try
     try:
-
-        #pdb.set_trace()
 
         ## Looping over iterations
         for i in range(iters):
@@ -173,6 +182,10 @@ def GamesEngine(browser, dbname, iters=None):
             ## Init refresh browser to false - sometimes we need to force it            
             refreshBrowser = False
 
+            ####################################################
+            ## With live information - update Game registry
+            ####################################################
+            
             ## Only need to proceed if there is some live information to loop through
             if len(live_info) > 0:
                 
@@ -182,6 +195,8 @@ def GamesEngine(browser, dbname, iters=None):
                     ## if game not ready to load up
                     if live_info[game]['currentTime'] == 'Live':
                         print("Skipping game with ID {} due to live.....".format(game))
+
+                        ## Stop loop, try next iteration
                         break
 
                     ## If game not in registry - add game
@@ -192,7 +207,7 @@ def GamesEngine(browser, dbname, iters=None):
 
                         ## Check game ID is not in black list                    
                         if game not in Game._blacklist:
-                            #print("Game not in blacklist either - will add game, with ID:", game)
+                            
                             ## Then, if i > 0 (i.e. don't refresh on first run for each
                             if i > 0:
                                 refreshBrowser = True
@@ -201,47 +216,78 @@ def GamesEngine(browser, dbname, iters=None):
                             Game(game, live_info[game], i)
                 
 
-                    ## Update teams for game
+                    ## Identified all 'new' games in registry - Update teams for game
                     Game._registry[game].update_teams(live_info[game], i)
 
                     ## Remove any games from registry if not been updated in, say 3 minutes
                     
-
+                ##  We have looped over all the games - give the user a message
                 print("Processed {} games".format(len(live_info)))
-                #pdb.set_trace
 
+                ########################################
+                ## Do we want to refresh the browser??
+                ########################################
+                
                 ## If something has happened above to force browser refresh, refresh it
                 ## Things that will cause it are:
                 ## Game found not in registry or blacklist - likely to be others we want to find
+                ## Games with no tournament information
+
+                ## refreshBrowser is a boolean and will be set true by certain events above
                 if refreshBrowser:
+
+                    ## This function will return (in this order) boolean, time, and counter
+                    ## This function keeps a note of the last time the browser was refreshed and the number of times it has been refreshed in that time.
+                    ## This function makes sure that the browser will not be refreshed too many times within a short time
+                    
                     canRefresh, refreshLastTime, iBrowsRefreshCount = browserRefreshCheck(iBrowsRefreshCount, refreshAllowCount, refreshLastTime, refreshAllowance)
                     if canRefresh:
                         print("Forcing browser refresh")
                         browser.refresh()
+
+                        ## Some sleepy time allows browser to load up all the scripts
                         time.sleep(1)
-                    
+                        
+                ## If after the first iteration, sleep 
                 if iters > 1:
                     print("Sleeping....")
                     #endtime = datetime.utcnow()
                     time.sleep(3)
-        ## 
-#        checkAndSaveDB(Game, dbname)
+        
+
+            ####################################
+            ## games had a length of zero
+            ####################################
+            
             ## Else, there are no games
             else:
                 print("No  games, sleep {}".format(lenSleep))
                 time.sleep(lenSleep)
 
         ##### FIND A WAY TO PURGE GAMES WHICH HAVE COMPLETED AND REMOVE THEM FROM THE REGISTRY
-            
+
+    ## User has asked to stop prorgam      
     except KeyboardInterrupt as e:
 
+        ##  Ask user if they would like to debug at this point
         debugStop()
+
+        ## Check and save database (Game._registry is a list of Game class objects)
         checkAndSaveDB(Game._registry, dbname)
+
+        ## At the end of the interrupt - return the game list to the master wrapper
         return Game._registry
         
     
 def checkAndSaveDB(Games, dbname):
-    """ Added: 2019-04-11 """
+    """
+        Purpose: Ask user if they would like to save DB, save it if yes
+        Inputs: Games - this should be a list (usually Game._registry) of game class objects to save to a shelve object
+                dbname - the path or name (if in current working directory) to save the shelve object.
+        Notes:
+        Author: Andrew Craik
+        Date:  2019-04-11
+    """
     check = input("Do you want to save the DB?\nY/N... ")
     if check.casefold() == 'y':
 
@@ -251,6 +297,13 @@ def checkAndSaveDB(Games, dbname):
         pass
 
 def debugStop():
+    """
+        Purpose:  If user says 'y' (yes) - bring python into debug mode
+        Inputs:
+        Notes:
+        Author: Andrew Craik
+        Date: 2019-04-12
+    """
     check = input("Do you want to debug? Y/N: ")
     if check.casefold() == 'y':
         pdb.set_trace()
@@ -259,16 +312,20 @@ def debugStop():
 def get_live_info(browser, soup):
 
     """
-    This module takes soup (from BeautifulSoup (bs4)) and returns a dictionary with information on the game, team and odds.
-    The dictionary is in format:
-        {game_id:
-            {'tournament_id', 'tournament', 'score_home', 'score_away', 'time'
-            , team_id_X:
-            {'num', 'den'}
-    """
+        Purpose:     This module takes soup (from BeautifulSoup (bs4)) and returns a dictionary with information on the game, team and odds.
+                    The dictionary is in format:
+                    {game_id:
+                        {'tournament_id', 'tournament', 'score_home', 'score_away', 'time'
+                        , team_id_X:
+                        {'num', 'den'}
+        Inputs:     browser -
+                    soup -
 
-    #print("Need to update this to get the tournament ID for each game")
-    #print("Need to update this to get the tournament ID for each game")
+        Notes:   Originally developed in 2017 and updated following changes to William Hill website in 2019.
+        Author:   Andrew Craik
+        Date: 2017
+        Date last updated: 2019-04
+    """
     
 
     ## Import any modules required
@@ -366,10 +423,7 @@ def get_live_info(browser, soup):
                 startTime = event['data-startdatetime']
                 #pdb.set_trace()
             else:
-                
-                #print("No startdate iteration {}, ID = {}".format(eCounter, eventID))
-                #pdb.set_trace()
-                
+                  
                 ## Keep a count of games that didn't have a start date
                 iNumMissingDate = iNumMissingDate + 1
                 refreshBrowser = True
@@ -444,8 +498,7 @@ def get_live_info(browser, soup):
             ## Get the teams
             teams = event.find_all('div', {'class':"btmarket__selection"})
             teams = [t.next_element for t in teams]
-##            if eventID == 'OB_EV14434648':
-##                pdb.set_trace()
+
             teamCounter = 0 
             for team in teams:
                 teamCounter = teamCounter + 1
@@ -465,8 +518,6 @@ def get_live_info(browser, soup):
                     tDict.update({'score':scoresDict[homeFlag]})
 
                 dr.update(gamedict, {eventID:{'tournamentID':tournamentID, 'tournament':tName, homeFlag:tDict}})
-##                if eventID == 'OB_EV14441119':
-##                    pdb.set_trace()
 
             
     ## Do we need to fresh the browser?
@@ -488,13 +539,16 @@ def get_live_info(browser, soup):
 def gettags(browser, tag, myclass, myclassstring):
     
     """
-        Returns list matching tag, myclass, myclasstring
-
+        Purpose: Returns list matching tag, myclass, myclasstring
+        Notes:  Not really using this but think it could be useful.
+        Author: Andrew Craik
+        
         Suggested Improvements (2019-04-09):
             - make 'find_all' and 'find' options
             - work out whether we need to import bs
             - find out make 'soup' an object we can pass to the function
             - myclassstring can be a dictionary
+        Date: 2019-04-16
         
     """
     
@@ -524,7 +578,7 @@ def gettags(browser, tag, myclass, myclassstring):
 def updatedb(games, dbout):
 
     """
-        Purpose:     
+        Purpose:    Loop through list (games) and update the shelve 'db' (database)
         Date:        2019-04-04
         Author:      Andrew Craik
         Inputs:    
@@ -573,10 +627,6 @@ def updatedb(games, dbout):
         
     db.close()
     
-def updatedbforce():
-
-    updatedb(Game._registry, dbname)
-
 
 def browserRefreshCheck(refreshCurrentCount, refreshAllowCount, refreshLastTime, refreshAllowance):
 
@@ -616,9 +666,16 @@ def browserRefreshCheck(refreshCurrentCount, refreshAllowCount, refreshLastTime,
         return True, refreshLastTime, refreshCurrentCount + 1
         
 def get_browser(browser):
+    """
+        Purpose:  To bring browser window back to a position on the screen (useful if it has been hidden)
+        Author: Andrew Craik
+        Date: 2017-04
+    """
     browser.set_window_position(0,0)
     
 def pickle_livestatic(live, static):
+    """ Date - 2019-04 - not sure if this is being used.
+    """
     import pickle
     
     datetime = input("Enter date/time in format you requrie")

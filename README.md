@@ -25,6 +25,16 @@ This program holds the class objects used to run the scraper.
 ## Game
 A game object takes in static_event_info and live_event_info scraped from the browser. The code is currently set up to run for football only at the moment.
 
+### Notes for Developer
+
+The key properties we need for each Game object are 
+- Start date
+- Sport name
+- Event (game) ID
+- Tournament ID
+- Tournament Description
+- Teams
+
 ### Game properties
 #### \_registry
 The registry is a dictionary holding all of the event IDs.  This is shared across all instances of of the class object.  
@@ -38,11 +48,17 @@ String holding sport name - currently only developed a football version of the c
 #### event
 Numeric ID of the event (or game).  These might be recycled by the website so I'm currently using start date and event to uniquely identify games.
 #### tournament_id
+Numeric ID of the tournament.
 #### tournament
+Tournament description (e.g. 'Italian Serie C Girone A')
 #### start_time
+Start date and time of game - in format '2018-09-23 15:30:00'
 #### secs_to_start
+Number of seconds until game is due to start.  Not sure this is neded
 #### selections
+List of dictionary for home, draw and away 'selections'.  I think this was originally derived once from the 'static information' from the website and not updated.  Can probably be removed.
 #### teams
+Python list holding each team as a 'team' class object
 #### 
 ## static_event_info
 Some information for each game is static and doesn't change unless the browser is refreshed

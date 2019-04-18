@@ -228,6 +228,7 @@ def GamesEngine(browser, dbname, iters=None):
                                 ### If not all team keys (H, A, D) were in live event information then
                                 ### This game is deleted on this occasion, it can still come back if live event information is updated
                                 del(Game._registry[game])
+                                Game._blacklist.append(game)
                                 
                 
 

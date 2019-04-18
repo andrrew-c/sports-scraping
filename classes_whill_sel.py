@@ -71,6 +71,9 @@ class Game:
    
     def initteams(self, gameid, live_event_info, iterNum):
 
+        import os
+        import shelve
+
         """ 
         
         Initialise team class for event
@@ -96,7 +99,7 @@ class Game:
                 return None
             
         ## If program has got this far - then all 3 teams exist.        
-        return return [Team(self, gameid, live_event_info['currentTime'], key, live_event_info[key], iterNum) for key in ['H', 'D', 'A']]
+        return [Team(self, gameid, live_event_info['currentTime'], key, live_event_info[key], iterNum) for key in ['H', 'D', 'A']]
 
     def archive_init_events(self, events):
             """

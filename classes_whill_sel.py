@@ -62,6 +62,10 @@ class Game:
         
         ## Each game has three teams (home/away/draw)
         self.teams              = self.initteams(gameid, live_event_info, iterNum)
+
+        ## If one of the keys are missing - delete this
+        if self.teams == None:
+            self.delete = True
     #else:
      #   self._blacklist.append(static_event_info['event'])
    
@@ -73,9 +77,26 @@ class Game:
         Input static_event_info: static 'event' level information
             
         """
-        #print("Teams should be a dictionary with market_id as the ID - this would avoid the need for any FOR loops when matching teams")
-        return [Team(self, gameid, live_event_info['currentTime'], key, live_event_info[key], iterNum) for key in ['H', 'D', 'A']]
-        
+
+        ## Path for shelve object to hold missing teams information
+        pathmissingTeams = os.path.join('..', '..', 'whill', 'missingteamsdb')
+
+        ## Iterate over home, draw and away
+        for key in ['H', 'D', 'A']:
+
+            ## Check if any of the keys are not in the DB
+            if not hasattr(live_event_info, key):
+                print("Event with ID {} missing key '{}'".format(gameid, key))
+                
+                ## Let's add them to a shelve object, i'll sort it out later
+                db = shelve.open(pathmissingTeams)
+                db[gameid] = live_event_info
+                print("DB now has {} entries".format(len(db)))
+                db.close
+                return None
+            
+        ## If program has got this far - then all 3 teams exist.        
+        return return [Team(self, gameid, live_event_info['currentTime'], key, live_event_info[key], iterNum) for key in ['H', 'D', 'A']]
 
     def archive_init_events(self, events):
             """

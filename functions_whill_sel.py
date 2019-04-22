@@ -13,7 +13,7 @@ import time     ## Time delays
 ##################################
 
 ## How many iterations until DB saved?
-iRefreshIters = 3
+iRefreshIters = 15
 
 
 ## Length of sleep if no games

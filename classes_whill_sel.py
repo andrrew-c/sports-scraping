@@ -69,12 +69,10 @@ class Game:
 
         ## If one of the keys are missing - delete this
         if self.teams == None:
-            pdb.set_trace()
+
+            #pdb.set_trace()
             self.delete = True
     
-    #else:
-     #   self._blacklist.append(static_event_info['event'])
-   
     def initteams(self, gameid, live_event_info, iterNum):
 
         import os
@@ -94,6 +92,7 @@ class Game:
         for key in ['H', 'D', 'A']:
 
             ## Check if any of the keys are not in the DB
+
             if not key in live_event_info:
                 print("Event with ID {} missing key '{}'".format(gameid, key))
                 

@@ -19,6 +19,10 @@ iRefreshIters = 15
 ## Length of sleep if no games
 lenSleep = 15
 
+
+## Number of seconds until a game is removed from the game registry
+lenRemoveRegistry = 180
+
 #refreshCurrentCount, refreshAllowCount, refreshLastTime, refreshAllowance):
 
 
@@ -162,9 +166,15 @@ def GamesEngine(browser, dbname, iters=None):
                     browser.refresh()
                     time.sleep(1)
                     
-                
-                print("Updating DB with {} games".format(len(Game._registry)))
-                updatedb(Game._registry, dbname)
+                if len(Game._registry) > 0:
+                    print("Updating DB with {} games".format(len(Game._registry)))
+                    #pdb.set_trace()
+                    updatedb(Game._registry, dbname)
+                else:
+                    print("Iter {} - game registry has no entries".format(i))
+
+                ## After updating DB - see if any games can be removed from 'list'
+                #updateGameRegistry(Game, lenRemoveRegistry)
             
             ## Make some soup from browser HTML
             soup = bs(browser.page_source, 'html.parser')
@@ -214,10 +224,26 @@ def GamesEngine(browser, dbname, iters=None):
                                 
                             ## Game new to registry and not in blacklist - add it
                             Game(game, live_info[game], i)
-                
 
-                    ## Identified all 'new' games in registry - Update teams for game
-                    Game._registry[game].update_teams(live_info[game], i)
+                            ## Is there an issue with this?
+                            if Game._registry[game].delete:
+                                #print("Gonna delete....")
+                                #pdb.set_trace()
+
+                                ### If not all team keys (H, A, D) were in live event information then
+                                ### This game is deleted on this occasion, it can still come back if live event information is updated
+                                print("******* Gonna delete {}".format(game))
+                                del(Game._registry[game])
+                                Game._blacklist.append(game)
+                        ## Game in black list
+                        else:
+                            break
+                                
+                    ## Check again for blacklist            
+                    if game not in Game._blacklist:
+                        
+                        ## Identified all 'new' games in registry - Update teams for game
+                        Game._registry[game].update_teams(live_info[game], i)
 
                     ## Remove any games from registry if not been updated in, say 3 minutes
                     
@@ -693,3 +719,10 @@ def games_have_same_start_date(dbgame, newgame):
     if not hasattr(dbgame, 'startdate') or not hasattr(newgame, 'startdate'):
         pdb.set_trace()
     return dbgame.startdate == newgame.startdate
+
+def updateGameRegistry(Game):
+    """ Purpose: Update the game registry
+        
+    """
+            
+    

@@ -21,6 +21,10 @@ class Game:
             The Game class object
         """
 
+
+        ## Init delete flag to false
+        self.delete = False
+
         if gameid == 'OB_EV14427415':
             pdb.set_trace()
           
@@ -50,7 +54,7 @@ class Game:
         ## Add new game to game registry for this class
         self._registry.update({self.event:self})
 
-        if not hasattr(live_event_info, 'tournamentID'):
+        if not 'tournamentID' in live_event_info:
             print("No tournament ID for ID {}".format(self.event))
             #return None
         else:
@@ -62,10 +66,17 @@ class Game:
         
         ## Each game has three teams (home/away/draw)
         self.teams              = self.initteams(gameid, live_event_info, iterNum)
-    #else:
-     #   self._blacklist.append(static_event_info['event'])
-   
+
+        ## If one of the keys are missing - delete this
+        if self.teams == None:
+
+            #pdb.set_trace()
+            self.delete = True
+    
     def initteams(self, gameid, live_event_info, iterNum):
+
+        import os
+        import shelve
 
         """ 
         
@@ -73,9 +84,27 @@ class Game:
         Input static_event_info: static 'event' level information
             
         """
-        #print("Teams should be a dictionary with market_id as the ID - this would avoid the need for any FOR loops when matching teams")
+
+        ## Path for shelve object to hold missing teams information
+        pathmissingTeams = os.path.join('..', '..', 'whill', 'missingteamsdb')
+
+        ## Iterate over home, draw and away
+        for key in ['H', 'D', 'A']:
+
+            ## Check if any of the keys are not in the DB
+
+            if not key in live_event_info:
+                print("Event with ID {} missing key '{}'".format(gameid, key))
+                
+                ## Let's add them to a shelve object, i'll sort it out later
+                db = shelve.open(pathmissingTeams)
+                db[gameid] = live_event_info
+                print("DB now has {} entries".format(len(db)))
+                db.close
+                return None
+            
+        ## If program has got this far - then all 3 teams exist.        
         return [Team(self, gameid, live_event_info['currentTime'], key, live_event_info[key], iterNum) for key in ['H', 'D', 'A']]
-        
 
     def archive_init_events(self, events):
             """

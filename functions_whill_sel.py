@@ -166,9 +166,12 @@ def GamesEngine(browser, dbname, iters=None):
                     browser.refresh()
                     time.sleep(1)
                     
-                
-                print("Updating DB with {} games".format(len(Game._registry)))
-                updatedb(Game._registry, dbname)
+                if len(Game._registry) > 0:
+                    print("Updating DB with {} games".format(len(Game._registry)))
+                    #pdb.set_trace()
+                    updatedb(Game._registry, dbname)
+                else:
+                    print("Iter {} - game registry has no entries".format(i))
 
                 ## After updating DB - see if any games can be removed from 'list'
                 #updateGameRegistry(Game, lenRemoveRegistry)
@@ -224,16 +227,23 @@ def GamesEngine(browser, dbname, iters=None):
 
                             ## Is there an issue with this?
                             if Game._registry[game].delete:
+                                #print("Gonna delete....")
+                                #pdb.set_trace()
 
                                 ### If not all team keys (H, A, D) were in live event information then
                                 ### This game is deleted on this occasion, it can still come back if live event information is updated
+                                print("******* Gonna delete {}".format(game))
                                 del(Game._registry[game])
                                 Game._blacklist.append(game)
+                        ## Game in black list
+                        else:
+                            break
                                 
-                
-
-                    ## Identified all 'new' games in registry - Update teams for game
-                    Game._registry[game].update_teams(live_info[game], i)
+                    ## Check again for blacklist            
+                    if game not in Game._blacklist:
+                        
+                        ## Identified all 'new' games in registry - Update teams for game
+                        Game._registry[game].update_teams(live_info[game], i)
 
                     ## Remove any games from registry if not been updated in, say 3 minutes
                     

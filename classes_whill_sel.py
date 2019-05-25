@@ -88,7 +88,7 @@ class Game:
         ## Path for shelve object to hold missing teams information
         pathmissingTeams = os.path.join('..', '..', 'whill', 'missingteamsdb')
 
-        ## Iterate over home, draw and away
+            ## Iterate over home, draw and away
         for key in ['H', 'D', 'A']:
 
             ## Check if any of the keys are not in the DB
@@ -97,10 +97,10 @@ class Game:
                 print("Event with ID {} missing key '{}'".format(gameid, key))
                 
                 ## Let's add them to a shelve object, i'll sort it out later
-                db = shelve.open(pathmissingTeams)
-                db[gameid] = live_event_info
-                print("DB now has {} entries".format(len(db)))
-                db.close
+                #db = shelve.open(pathmissingTeams)
+                #db[gameid] = live_event_info
+                #print("DB now has {} entries".format(len(db)))
+                #db.close
                 return None
             
         ## If program has got this far - then all 3 teams exist.        

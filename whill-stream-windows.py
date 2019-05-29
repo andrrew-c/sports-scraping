@@ -13,6 +13,8 @@ import imp
 
 import os, sys
 
+import pdb
+
 
 ## Change path
 #os.chdir(os.path.dirname(sys.argv[0]))
@@ -68,8 +70,31 @@ mainpath = os.path.abspath(os.path.dirname(sys.argv[0]))
 os.chdir(mainpath)
 print("Working directory changed to '{}'".format(mainpath))
 
+########################
 ## Path of shelve object
-whdbpath = os.path.join('..', '..', 'whill', 'whilldb')
+########################
+
+## This will now handle running in two different base folders (2019-05-15)
+
+## If user wants to debug we can write to the current folder
+if sys.argv[1].upper() == "DEBUG":
+    whdbpath = os.path.join('.', 'whilldb')
+    print("Running in debug mode - path of db =\n'{}'".format(os.path.abspath(whdbpath)))
+    #pdb.set_trace()
+    
+## If two folders up is "GitHub" then path should have two folders up;
+elif os.path.basename(os.path.abspath(os.path.join('..',os.curdir))) == "GitHub":
+    whdbpath = os.path.join('..', '..', 'whill', 'whilldb')
+    
+## Else, is the current folder 'whill'
+elif os.path.basename(os.path.abspath(os.curdir)) == 'whill':
+    whdbpath = os.path.abspath(os.path.join('.', 'whilldb'))
+
+else:
+    print("Error: Current path is '{}'\nNot recognised by program.  Please check")
+    input("Press enter to exit...")
+    exit()
+
 
 # %% Initialise browser 
 
@@ -125,3 +150,4 @@ def RunEngine(iRunNum):
 def CheckAttributeExists(obj, attr):
     """ Returns True if attribute exists"""
     pass
+    

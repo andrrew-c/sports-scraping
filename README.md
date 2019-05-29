@@ -1,12 +1,16 @@
 #
 sports-scraping
-In game betting and scraping related to sports
+In game betting and scraping related to sports.  This progam records the scores and odds for football matches in real-time using a live browser, based on William Hill betting site.
 
 ## Author: Andrew Craik
 
+## Note (2019-09-07)
+
+Please be aware that William Hill updated their website and my original code no longer worked.  I'm currently developing a branch which will make the original code work.  The updated are currently being tested and I should have the new, working, merged with the master branch soon.
+
 # Purpose
 
-This project started in 2017.  I started this originally because I was interested in the live, in game, betting provided by online sites, such as William Hill.  I tried to find a way to download the data (badly) using Excel and VBA and got nowhere.  Later on, with some more experian with Python I have been able to get the project to run, using football data only
+This project started in 2017.  I started this originally because I was interested in the live, in game, betting provided by online sites, such as William Hill.  I tried to find a way to download the data (badly) using Excel and VBA and got nowhere.  Later on, with some more experience with Python I have been able to get the project to run, using football data only.
 
 It collects live data, during play on various tournaments. Teams are recorded and scores and changing odds are scraped.  The code uses an instance of a chrome browser, using Selenium to drive Chrome.  I run this on a headless Unix box.
 

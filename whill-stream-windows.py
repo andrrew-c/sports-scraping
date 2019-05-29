@@ -13,6 +13,8 @@ import imp
 
 import os, sys
 
+import pdb
+
 
 ## Change path
 #os.chdir(os.path.dirname(sys.argv[0]))
@@ -74,8 +76,14 @@ print("Working directory changed to '{}'".format(mainpath))
 
 ## This will now handle running in two different base folders (2019-05-15)
 
+## If user wants to debug we can write to the current folder
+if sys.argv[1].upper() == "DEBUG":
+    whdbpath = os.path.join('.', 'whilldb')
+    print("Running in debug mode - path of db =\n'{}'".format(os.path.abspath(whdbpath)))
+    #pdb.set_trace()
+    
 ## If two folders up is "GitHub" then path should have two folders up;
-if os.path.basename(os.path.abspath(os.path.join('..',os.curdir))) == "GitHub":
+elif os.path.basename(os.path.abspath(os.path.join('..',os.curdir))) == "GitHub":
     whdbpath = os.path.join('..', '..', 'whill', 'whilldb')
     
 ## Else, is the current folder 'whill'

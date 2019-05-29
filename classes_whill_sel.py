@@ -25,8 +25,8 @@ class Game:
         ## Init delete flag to false
         self.delete = False
 
-        if gameid == 'OB_EV14427415':
-            pdb.set_trace()
+        #if gameid == 'OB_EV14427415':
+        #    pdb.set_trace()
           
     
         from datetime import date
@@ -43,6 +43,9 @@ class Game:
             
         ## Set up startdate for events - to stop different events with the same ID being overwritten
         self.startdate = live_event_info['startTime'][:10]
+
+        ## Keep a note of when last seen in live event information
+        self.lastseen = datetime.now()
     
         ## Sport name - string
         #self.sport_name         = static_event_info['sport']['sport_name']
@@ -72,6 +75,7 @@ class Game:
 
             #pdb.set_trace()
             self.delete = True
+        
     
     def initteams(self, gameid, live_event_info, iterNum):
 
@@ -139,6 +143,9 @@ class Game:
         """
 
 """
+        ## Keep a note of when this game is being updated
+        self.lastseen = datetime.now()
+        
         ## Get current time (in seconds)
         #pdb.set_trace()
         time1 = live_event_info['currentTime']

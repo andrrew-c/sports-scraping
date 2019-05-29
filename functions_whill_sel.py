@@ -96,6 +96,24 @@ def initbrowser(url, hidebrowser=False):
     browser.get(url)
     return browser
 
+def remove_finished_games(games, timetowait=600):
+
+    newgames = []
+    deletedGames = 0
+    for game in games:
+        ## If this game hasn't been seen for a while
+        if (datetime.now()-game.lastseen).seconds > timetowait:
+            deletedGames = deletedGames + 1
+
+            ## This is how games are deleted below.
+            """ del(Game._registry[game])
+                                Game._blacklist.append(game)"""
+        ## Else game was OK
+        else:
+            newgames.append(newgames)
+    print("There are {} games removed from DB as their time was over".format(len(deletedGames), timetowait))
+
+    return newgames
 
 def GamesEngine(browser, dbname, iters=None):
 
@@ -169,6 +187,9 @@ def GamesEngine(browser, dbname, iters=None):
                 if len(Game._registry) > 0:
                     print("Updating DB with {} games".format(len(Game._registry)))
                     #pdb.set_trace()
+
+                    remove_finish_games(Game._registry)
+                    
                     updatedb(Game._registry, dbname)
                 else:
                     print("Iter {} - game registry has no entries".format(i))
